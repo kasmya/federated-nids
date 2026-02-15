@@ -1,0 +1,30 @@
+# NIDS Web Dashboard - Network Intrusion Detection System
+# Web-based NIDS with real-time monitoring
+
+# Web Framework
+Flask==3.0.0
+Flask-SocketIO==5.3.6
+
+# Real-time async support
+eventlet==0.33.3
+
+# Network Packet Processing
+scapy==2.5.0
+pyshark==0.6
+
+# YARA Integration (optional)
+yara-python==4.5.1
+
+# Utilities
+python-socketio==5.10.0
+python-engineio==4.8.0
+
+# Installation:
+# pip install -r requirements.txt
+#
+# For macOS, install tcpflow separately:
+# brew install tcpflow
+#
+# For YARA on macOS:
+# brew install yara
+

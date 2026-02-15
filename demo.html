@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NIDS Dashboard - Network Intrusion Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #0d0d15;
+            --bg-tertiary: #151520;
+            --matrix-green: #00ff33;
+            --matrix-green-dim: #00cc29;
+            --matrix-green-dark: #004d1a;
+            --matrix-red: #ff3333;
+            --text-primary: #e0e0e0;
+            --text-dim: #888;
+            --border-color: #1a3a1a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 100vw;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 25px;
+            background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+            border-bottom: 1px solid var(--matrix-green-dark);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon {
+            font-size: 28px;
+            color: var(--matrix-green);
+        }
+        .logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .logo h1 .highlight { color: var(--matrix-green); }
+        .header-stats { display: flex; gap: 20px; }
+        .stat-box {
+            text-align: center;
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            min-width: 90px;
+        }
+        .stat-box.alert { border-color: var(--matrix-red); }
+        .stat-label { display: block; font-size: 9px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; }
+        .stat-value { font-size: 18px; font-weight: 700; color: var(--matrix-green); }
+        .stat-box.alert .stat-value { color: var(--matrix-red); }
+        .header-time { font-size: 14px; color: var(--matrix-green); letter-spacing: 1px; }
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        .control-panel {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            padding: 15px;
+            overflow-y: auto;
+        }
+        .panel-section { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .panel-section h3 {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--matrix-green);
+            margin-bottom: 12px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .cyber-select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button-group { display: flex; gap: 8px; }
+        .button-group.vertical { flex-direction: column; }
+        .cyber-btn {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--matrix-green);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .cyber-btn:hover { background: var(--matrix-green-dark); border-color: var(--matrix-green); }
+        .cyber-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .cyber-btn.start { border-color: var(--matrix-green); color: var(--matrix-green); }
+        .cyber-btn.start:hover { background: var(--matrix-green); color: var(--bg-primary); }
+        .cyber-btn.stop { border-color: var(--matrix-red); color: var(--matrix-red); }
+        .cyber-btn.stop:hover { background: var(--matrix-red); color: var(--bg-primary); }
+        .rules-container {
+            max-height: 150px;
+            overflow-y: auto;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 8px;
+        }
+        .empty-text { color: var(--text-dim); font-size: 11px; text-align: center; padding: 20px; }
+        .rule-item {
+            padding: 6px 8px;
+            background: var(--bg-secondary);
+            border-left: 2px solid var(--matrix-green);
+            margin-bottom: 4px;
+            font-size: 10px;
+            word-break: break-all;
+        }
+        .traffic-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg-primary); overflow: hidden; }
+        .tabs { display: flex; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); }
+        .tab {
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+        .tab.active { color: var(--matrix-green); border-bottom-color: var(--matrix-green); }
+        .tab-content { display: none; flex: 1; overflow: hidden; }
+        .tab-content.active { display: flex; flex-direction: column; }
+        .data-table-container { flex: 1; overflow: auto; }
+        .cyber-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .cyber-table thead { position: sticky; top: 0; background: var(--bg-tertiary); z-index: 10; }
+        .cyber-table th {
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 700;
+            color: var(--matrix-green);
+            border-bottom: 1px solid var(--matrix-green-dark);
+            white-space: nowrap;
+        }
+        .cyber-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .cyber-table tbody tr:hover { background: var(--matrix-green-dark); cursor: pointer; }
+        .alerts-container { flex: 1; overflow-y: auto; padding: 15px; }
+        .alert-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--matrix-red);
+            border-left: 3px solid var(--matrix-red);
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .alert-card:hover { transform: translateX(5px); }
+        .alert-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .alert-id { color: var(--matrix-red); font-weight: 700; }
+        .alert-time { color: var(--text-dim); font-size: 10px; }
+        .alert-message { color: var(--matrix-green); font-size: 12px; margin-bottom: 8px; }
+        .alert-details { display: flex; gap: 15px; font-size: 10px; color: var(--text-dim); }
+        .alert-details span { background: var(--bg-secondary); padding: 2px 6px; border-radius: 2px; }
+        .streams-layout { display: flex; flex: 1; gap: 15px; padding: 15px; }
+        .stream-list { flex: 1; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; display: flex; flex-direction: column; }
+        .stream-list h4 { padding: 10px 12px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); font-size: 11px; color: var(--matrix-green); }
+        .stream-items { flex: 1; overflow-y: auto; padding: 8px; }
+        .stream-item { padding: 8px 10px; background: var(--bg-secondary); border: 1px solid var(--border-color); margin-bottom: 4px; cursor: pointer; font-size: 11px; }
+        .stream-item:hover { border-color: var(--matrix-green); background: var(--matrix-green-dark); }
+        .analysis-panel { width: 350px; background: var(--bg-secondary); border-left: 1px solid var(--border-color); padding: 15px; overflow-y: auto; }
+        .analysis-content { background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; padding: 12px; min-height: 200px; max-height: 300px; overflow: auto; font-size: 11px; }
+        .footer { display: flex; align-items: center; justify-content: center; gap: 15px; padding: 10px 20px; background: var(--bg-tertiary); border-top: 1px solid var(--border-color); font-size: 10px; color: var(--text-dim); }
+        .status { display: flex; align-items: center; gap: 5px; }
+        .status.connected { color: var(--matrix-green); }
+        .mini-chart { width: 100%; height: 120px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; padding: 10px; }
+        .proto-stat { display: flex; justify-content: space-between; padding: 4px 0; font-size: 10px; border-bottom: 1px solid var(--border-color); }
+        .proto-name { color: var(--matrix-green); }
+        .proto-count { color: var(--text-dim); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-tertiary); }
+        ::-webkit-scrollbar-thumb { background: var(--matrix-green-dark); border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">◉</span>
+                <h1>NIDS <span class="highlight">DASHBOARD</span></h1>
+            </div>
+            <div class="header-stats">
+                <div class="stat-box">
+                    <span class="stat-label">PACKETS</span>
+                    <span class="stat-value" id="packet-count">0</span>
+                </div>
+                <div class="stat-box alert">
+                    <span class="stat-label">ALERTS</span>
+                    <span class="stat-value" id="alert-count">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">STREAMS</span>
+                    <span class="stat-value" id="stream-count">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">STATUS</span>
+                    <span class="stat-value" id="capture-status">IDLE</span>
+                </div>
+            </div>
+            <div class="header-time">
+                <span id="current-time">--:--:--</span>
+            </div>
+        </header>
+        <main class="main-content">
+            <aside class="control-panel">
+                <div class="panel-section">
+                    <h3>◈ INTERFACE</h3>
+                    <select id="interface-select" class="cyber-select">
+                        <option value="">en0 (192.168.1.100)</option>
+                    </select>
+                </div>
+                <div class="panel-section">
+                    <h3>◈ CAPTURE CONTROL</h3>
+                    <div class="button-group">
+                        <button class="cyber-btn start" onclick="alert('Start capture - requires Flask server running')">▶ START</button>
+                        <button class="cyber-btn stop" disabled>⏹ STOP</button>
+                    </div>
+                </div>
+                <div class="panel-section">
+                    <h3>◈ ACTIONS</h3>
+                    <div class="button-group vertical">
+                        <button class="cyber-btn">↻ REFRESH RULES</button>
+                        <button class="cyber-btn">📂 LOAD PCAP</button>
+                        <button class="cyber-btn">💾 SAVE CAPTURE</button>
+                        <button class="cyber-btn">◈ YARA SCAN</button>
+                    </div>
+                </div>
+                <div class="panel-section">
+                    <h3>◈ ACTIVE RULES</h3>
+                    <div class="rules-container">
+                        <div class="rule-item">alert tcp any any --> any 22 SSH_DETECTED</div>
+                        <div class="rule-item">alert udp any any --> any 53 SUSPICIOUS_DNS</div>
+                        <div class="rule-item">alert tcp 192.168.1.0/24 any --> any any INTERNAL_SCAN</div>
+                    </div>
+                </div>
+            </aside>
+            <section class="traffic-panel">
+                <div class="tabs">
+                    <button class="tab active">ALL TRAFFIC</button>
+                    <button class="tab">SECURITY ALERTS</button>
+                    <button class="tab">TCP STREAMS</button>
+                </div>
+                <div class="tab-content active">
+                    <div class="data-table-container">
+                        <table class="cyber-table">
+                            <thead>
+                                <tr><th>#</th><th>TIME</th><th>SOURCE</th><th>DESTINATION</th><th>PROTO</th><th>SUMMARY</th></tr>
+                            </thead>
+                            <tbody id="traffic-table-body">
+                                <tr><td colspan="6" class="empty-text">Connect to server to see live traffic</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-content">
+                    <div class="alerts-container">
+                        <div class="alert-card">
+                            <div class="alert-header"><span class="alert-id">#1</span><span class="alert-time">10:23:45</span></div>
+                            <div class="alert-message">SSH_DETECTED</div>
+                            <div class="alert-details"><span>192.168.1.100:52341</span><span>→</span><span>192.168.1.1:22</span><span>TCP</span></div>
+                        </div>
+                        <div class="alert-card">
+                            <div class="alert-header"><span class="alert-id">#2</span><span class="alert-time">10:23:46</span></div>
+                            <div class="alert-message">SUSPICIOUS_DNS</div>
+                            <div class="alert-details"><span>192.168.1.100:55321</span><span>→</span><span>8.8.8.8:53</span><span>UDP</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-content">
+                    <div class="streams-layout">
+                        <div class="stream-list">
+                            <h4>TCP Streams</h4>
+                            <div class="stream-items">
+                                <div class="stream-item">TCP Stream #0</div>
+                                <div class="stream-item">TCP Stream #1</div>
+                                <div class="stream-item">TCP Stream #2</div>
+                            </div>
+                        </div>
+                        <div class="stream-list">
+                            <h4>HTTP/2 Streams</h4>
+                            <div class="stream-items">
+                                <div class="stream-item">HTTP/2 Stream #0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <aside class="analysis-panel">
+                <div class="panel-section">
+                    <h3>◈ PACKET ANALYSIS</h3>
+                    <div class="analysis-content">
+                        <p><strong>Alert ID:</strong> #1</p>
+                        <p><strong>Message:</strong> SSH_DETECTED</p>
+                        <p><strong>Source:</strong> 192.168.1.100:52341</p>
+                        <p><strong>Destination:</strong> 192.168.1.1:22</p>
+                        <p><strong>Protocol:</strong> TCP</p>
+                        <p><strong>Payload:</strong> SSH-2.0-OpenSSH_8.9...</p>
+                    </div>
+                </div>
+                <div class="panel-section">
+                    <h3>◈ STREAM VIEWER</h3>
+                    <div class="analysis-content">
+                        <p><strong>Stream:</strong> #0</p>
+                        <pre style="white-space: pre-wrap; word-break: break-all; font-size: 10px;">SSH-2.0-OpenSSH_8.9
+...
+</pre>
+                    </div>
+                </div>
+                <div class="panel-section">
+                    <h3>◈ PROTOCOL DISTRIBUTION</h3>
+                    <div class="mini-chart">
+                        <div class="proto-stat"><span class="proto-name">TCP</span><span class="proto-count">1,234</span></div>
+                        <div class="proto-stat"><span class="proto-name">UDP</span><span class="proto-count">567</span></div>
+                        <div class="proto-stat"><span class="proto-name">ICMP</span><span class="proto-count">89</span></div>
+                        <div class="proto-stat"><span class="proto-name">HTTP</span><span class="proto-count">234</span></div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+        <footer class="footer">
+            <span>NIDS Dashboard v1.0</span>
+            <span>|</span>
+            <span class="status connected">● CONNECTED</span>
+            <span>|</span>
+            <span>Scapy + PyShark + YARA</span>
+        </footer>
+    </div>
+    <script>
+        function updateTime() {
+            document.getElementById('current-time').textContent = new Date().toLocaleTimeString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+        document.querySelectorAll('.tab').forEach((tab, index) => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.querySelectorAll('.tab-content')[index].classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
+

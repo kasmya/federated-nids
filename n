@@ -1,0 +1,698 @@
+ter name="content">
+#!/usr/bin/env python3
+"""
+NIDS Web Dashboard - Closed-Loop NIDS Server
+With Layer 2 (Brain) and Layer 3 (Teacher) Integration
+"""
+
+import os
+import sys
+import json
+import threading
+import logging
+import socket
+import ipaddress
+import random
+from datetime import datetime
+from collections import defaultdict
+
+from flask import Flask, render_template, request, jsonify
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Try to import closed-loop modules
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from closed_loop import (
+        SimpleAnomalyDetector,
+        RuleGenerator,
+        ClosedLoopNIDS,
+        get_learning_db
+    )
+    CLOSED_LOOP_AVAILABLE = True
+    logger.info("Closed-Loop NIDS modules loaded successfully")
+except ImportError as e:
+    CLOSED_LOOP_AVAILABLE = False
+    logger.warning(f"Closed-Loop NIDS modules not available: {e}")
+
+app = Flask(__name__,
+            static_folder='static',
+            static_url_path='/static',
+            template_folder='templates')
+
+# Paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMP_DIR = os.path.join(BASE_DIR, 'temp')
+PCAP_DIR = os.path.join(BASE_DIR, 'saved_pcap')
+
+for d in [TEMP_DIR, PCAP_DIR]:
+    os.makedirs(d, exist_ok=True)
+
+# Thread-safe capture state
+class CaptureState:
+    def __init__(self):
+        self._lock = threading.RLock()
+        self.reset()
+
+    def reset(self):
+        with self._lock:
+            self.running = False
+            self.interface = None
+            self.packet_count = 0
+            self.alert_count = 0
+            self.start_time = None
+            self.pkt_list = []
+            self.suspicious_packets = []
+            self.sus_readable_payloads = []
+            self.protocol_stats = defaultdict(int)
+
+    def add_packet(self, pkt):
+        with self._lock:
+            self.pkt_list.append(pkt)
+            self.packet_count += 1
+
+    def add_alert(self, alert, payload):
+        with self._lock:
+            self.alert_count += 1
+            self.suspicious_packets.append(alert)
+            self.sus_readable_payloads.append(payload)
+
+    def get_summary(self):
+        with self._lock:
+            elapsed = (datetime.now() - self.start_time).total_seconds() if self.start_time else 0
+            return {
+                'running': self.running,
+                'interface': self.interface,
+                'packet_count': self.packet_count,
+                'alert_count': self.alert_count,
+                'elapsed': elapsed
+            }
+
+    def get_alerts(self):
+        with self._lock:
+            return list(self.suspicious_packets[-100:])
+
+capture_state = CaptureState()
+
+# Closed-Loop NIDS
+closed_loop_nids = None
+
+# Initialize Closed-Loop NIDS
+def init_closed_loop():
+    global closed_loop_nids
+
+    if not CLOSED_LOOP_AVAILABLE:
+        logger.warning("Closed-Loop NIDS not available - running in basic mode")
+        return False
+
+    try:
+        config = {
+            'window_size': 10,
+            'detection_threshold': 0.5,
+            'auto_rules_file': os.path.join(BASE_DIR, 'auto_rules.txt'),
+            'db_path': os.path.join(BASE_DIR, 'learning.db'),
+            'auto_generate_rules': True
+        }
+
+        closed_loop_nids = ClosedLoopNIDS(config)
+        logger.info("Closed-Loop NIDS initialized successfully")
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to initialize Closed-Loop NIDS: {e}")
+        return False
+
+# Initialize on module load
+init_closed_loop()
+
+# Rules state
+rules_state = {'protocols': [], 'src_ips': [], 'src_ports': [], 'dst_ips': [], 'dst_ports': [], 'messages': [], 'raw_rules': []}
+
+def get_scapy():
+    import scapy.all as scapy
+    return scapy
+
+def proto_name_by_num(proto_num):
+    for name, num in vars(socket).items():
+        if name.startswith("IPPROTO") and proto_num == num:
+            return name[8:].lower()
+    return "unknown"
+
+def get_interfaces():
+    interfaces = []
+    try:
+        scapy = get_scapy()
+        from scapy.arch import get_if_list
+        for iface_name in get_if_list():
+            iface_info = {'name': iface_name, 'ip': 'N/A'}
+            try:
+                iface_ip = scapy.get_if_addr(iface_name)
+                if iface_ip:
+                    iface_info['ip'] = str(iface_ip)
+            except:
+                pass
+            interfaces.append(iface_info)
+    except:
+        interfaces = [{'name': 'en0', 'ip': 'Auto-detect'}, {'name': 'lo', 'ip': '127.0.0.1'}]
+    return interfaces
+
+def load_network_rules(rule_file="rules.txt"):
+    global rules_state
+    rules_state = {'protocols': [], 'src_ips': [], 'src_ports': [], 'dst_ips': [], 'dst_ports': [], 'messages': [], 'raw_rules': []}
+
+    # Load manual rules
+    try:
+        with open(rule_file, 'r') as f:
+            for rule in f.readlines():
+                rule = rule.strip()
+                if not rule or rule.startswith('#') or not rule.startswith('alert'):
+                    continue
+                rules_state['raw_rules'].append(rule)
+                parts = rule.split()
+                if len(parts) < 7:
+                    continue
+                rules_state['protocols'].append(parts[1].lower() if parts[1] != 'any' else 'any')
+                rules_state['src_ips'].append(parts[2].lower() if parts[2] != 'any' else 'any')
+                rules_state['src_ports'].append(parts[3] if parts[3] != 'any' else 'any')
+                rules_state['dst_ips'].append(parts[5].lower() if parts[5] != 'any' else 'any')
+                rules_state['dst_ports'].append(parts[6] if parts[6] != 'any' else 'any')
+                rules_state['messages'].append(' '.join(parts[7:]) if len(parts) > 7 else 'No message')
+    except Exception as e:
+        logger.error(f"Error loading rules: {e}")
+
+    # Load auto-generated rules
+    auto_rules_file = "auto_rules.txt"
+    try:
+        with open(auto_rules_file, 'r') as f:
+            for rule in f.readlines():
+                rule = rule.strip()
+                if not rule or rule.startswith('#') or not rule.startswith('alert'):
+                    continue
+                rules_state['raw_rules'].append(rule)
+                parts = rule.split()
+                if len(parts) < 7:
+                    continue
+                rules_state['protocols'].append(parts[1].lower() if parts[1] != 'any' else 'any')
+                rules_state['src_ips'].append(parts[2].lower() if parts[2] != 'any' else 'any')
+                rules_state['src_ports'].append(parts[3] if parts[3] != 'any' else 'any')
+                rules_state['dst_ips'].append(parts[5].lower() if parts[5] != 'any' else 'any')
+                rules_state['dst_ports'].append(parts[6] if parts[6] != 'any' else 'any')
+                rules_state['messages'].append(' '.join(parts[7:]) if len(parts) > 7 else 'No message')
+        logger.info(f"Loaded {len(rules_state['raw_rules'])} rules (including auto-generated)")
+    except Exception as e:
+        logger.info("No auto-generated rules found")
+
+def check_packet_rules(pkt):
+    if 'IP' not in pkt:
+        return None
+    try:
+        src, dst, proto = pkt['IP'].src, pkt['IP'].dst, proto_name_by_num(pkt['IP'].proto)
+        sport, dport = getattr(pkt['IP'], 'sport', 0), getattr(pkt['IP'], 'dport', 0)
+    except:
+        return None
+
+    for i in range(len(rules_state['protocols'])):
+        match = True
+        if rules_state['protocols'][i] != 'any' and rules_state['protocols'][i] != proto:
+            match = False
+        if match:
+            rule_src = rules_state['src_ips'][i]
+            if rule_src != 'any':
+                if '/' in rule_src:
+                    try:
+                        if ipaddress.IPv4Address(src) not in ipaddress.IPv4Network(rule_src):
+                            match = False
+                    except:
+                        match = False
+                elif src != rule_src:
+                    match = False
+        if match:
+            rule_dst = rules_state['dst_ips'][i]
+            if rule_dst != 'any':
+                if '/' in rule_dst:
+                    try:
+                        if ipaddress.IPv4Address(dst) not in ipaddress.IPv4Network(rule_dst):
+                            match = False
+                    except:
+                        match = False
+                elif dst != rule_dst:
+                    match = False
+        if match:
+            rule_sport = rules_state['src_ports'][i]
+            if rule_sport != 'any' and str(sport) != str(rule_sport):
+                match = False
+        if match:
+            rule_dport = rules_state['dst_ports'][i]
+            if rule_dport != 'any' and str(dport) != str(rule_dport):
+                match = False
+        if match:
+            return {'message': rules_state['messages'][i], 'src': src, 'dst': dst, 'proto': proto, 'sport': sport, 'dport': dport}
+    return None
+
+def packet_to_dict(pkt):
+    """Convert scapy packet or dict to standard format"""
+    if isinstance(pkt, dict):
+        return pkt
+
+    try:
+        return {
+            'src': pkt['IP'].src if 'IP' in pkt else 'unknown',
+            'dst': pkt['IP'].dst if 'IP' in pkt else 'unknown',
+            'proto': proto_name_by_num(pkt['IP'].proto) if 'IP' in pkt else 'unknown',
+            'sport': pkt['IP'].sport if 'IP' in pkt and hasattr(pkt['IP'], 'sport') else 0,
+            'dport': pkt['IP'].dport if 'IP' in pkt and hasattr(pkt['IP'], 'dport') else 0,
+            'length': len(pkt),
+            'flags': str(pkt['TCP'].flags) if 'TCP' in pkt else ''
+        }
+    except:
+        return {
+            'src': 'unknown',
+            'dst': 'unknown',
+            'proto': 'unknown',
+            'sport': 0,
+            'dport': 0,
+            'length': 64,
+            'flags': ''
+        }
+
+def process_packet(pkt):
+    if not capture_state.running:
+        return
+
+    # Add to capture state
+    capture_state.add_packet(pkt)
+
+    if 'IP' in pkt:
+        proto = proto_name_by_num(pkt['IP'].proto)
+        with capture_state._lock:
+            capture_state.protocol_stats[proto] += 1
+
+    # Check Layer 1 rules (existing)
+    rule_match = check_packet_rules(pkt)
+    if rule_match:
+        payload = ""
+        if 'TCP' in pkt:
+            try:
+                payload = bytes(pkt['TCP'].payload).decode('utf-8', 'replace')
+            except:
+                payload = "<binary>"
+        elif 'UDP' in pkt:
+            try:
+                payload = bytes(pkt['UDP'].payload).decode('utf-8', 'replace')
+            except:
+                payload = "<binary>"
+
+        alert = {
+            'id': capture_state.alert_count + 1,
+            'timestamp': datetime.now().isoformat(),
+            'message': rule_match['message'],
+            'src': rule_match['src'],
+            'dst': rule_match['dst'],
+            'proto': rule_match['proto'],
+            'sport': rule_match['sport'],
+            'dport': rule_match['dport'],
+            'payload': payload[:500]
+        }
+        capture_state.add_alert(alert, payload)
+
+    # Layer 2: Anomaly Detection (if available)
+    if CLOSED_LOOP_AVAILABLE and closed_loop_nids:
+        try:
+            pkt_dict = packet_to_dict(pkt)
+            anomaly = closed_loop_nids.detector.process_packet(pkt_dict)
+            if anomaly and anomaly.rule_generated:
+                # Reload rules when new auto-rule is generated
+                load_network_rules()
+                logger.info(f"Auto-generated rule deployed: {anomaly.rule_id}")
+        except Exception as e:
+            logger.error(f"Error in anomaly detection: {e}")
+
+def start_capture(interface):
+    if capture_state.running:
+        return
+    capture_state.reset()
+    capture_state.running = True
+    capture_state.interface = interface
+    capture_state.start_time = datetime.now()
+
+    # Reload rules before starting
+    load_network_rules()
+
+    try:
+        scapy = get_scapy()
+
+        def capture_thread():
+            try:
+                logger.info(f"Starting capture on {interface}")
+                scapy.sniff(prn=process_packet, store=0, iface=interface, stop_filter=lambda x: not capture_state.running)
+            except Exception as e:
+                logger.warning(f"Real capture failed: {e}, starting simulation mode")
+                if capture_state.running:
+                    start_simulation()
+                return
+            capture_state.running = False
+            logger.info("Capture stopped")
+
+        thread = threading.Thread(target=capture_thread, daemon=True)
+        thread.start()
+    except Exception as e:
+        logger.warning(f"Could not initialize scapy: {e}, starting simulation mode")
+        start_simulation()
+
+def start_simulation():
+    """Generate simulated network traffic with attack patterns"""
+    logger.info("Starting traffic simulation mode")
+
+    import time
+
+    # Normal traffic patterns
+    protocols = ['tcp', 'udp', 'icmp']
+    ports = [80, 443, 22, 53, 8080, 3000, 21, 25, 110, 143]
+    normal_ips = ['192.168.1.' + str(i) for i in range(1, 20)]
+    external_ips = ['8.8.8.8', '1.1.1.1', '142.250.80.46']
+
+    # Attack patterns for testing closed-loop
+    attack_ips = ['192.168.1.100', '192.168.1.101']
+    attack_mode = {'active': False, 'ip': None, 'type': None}
+
+    def simulate_traffic():
+        while capture_state.running:
+            try:
+                # Randomly trigger attack patterns
+                if random.random() < 0.05 and not attack_mode['active']:
+                    # Start an attack
+                    attack_mode['active'] = True
+                    attack_mode['ip'] = random.choice(attack_ips)
+                    attack_mode['type'] = random.choice(['port_scan', 'syn_flood'])
+                    logger.info(f"Simulating {attack_mode['type']} from {attack_mode['ip']}")
+
+                # Generate packet
+                if attack_mode['active'] and attack_mode['type'] == 'port_scan':
+                    # Port scan pattern: same source, many dest ports
+                    src_ip = attack_mode['ip']
+                    dst_ip = random.choice(normal_ips)
+                    proto = 'tcp'
+                    sport = random.randint(49152, 65535)
+                    dport = random.randint(1, 1000)  # Scanning many ports
+                    flags = 'S'
+                elif attack_mode['active'] and attack_mode['type'] == 'syn_flood':
+                    # SYN flood pattern: high rate
+                    src_ip = attack_mode['ip']
+                    dst_ip = random.choice(external_ips)
+                    proto = 'tcp'
+                    sport = random.randint(49152, 65535)
+                    dport = 80
+                    flags = 'S'
+                else:
+                    # Normal traffic
+                    src_ip = random.choice(normal_ips)
+                    dst_ip = random.choice(external_ips) if random.random() > 0.3 else random.choice(normal_ips)
+                    proto = random.choice(protocols)
+                    sport = random.randint(49152, 65535)
+                    dport = random.choice(ports)
+                    flags = 'SA' if proto == 'tcp' else ''
+
+                # Create packet dict for simulation
+                pkt_data = {
+                    'src': src_ip,
+                    'dst': dst_ip,
+                    'proto': proto,
+                    'sport': sport,
+                    'dport': dport,
+                    'length': 64,
+                    'flags': flags,
+                    'summary': f"{proto.upper()} {src_ip}:{sport} -> {dst_ip}:{dport}"
+                }
+
+                # Add to capture state
+                with capture_state._lock:
+                    capture_state.packet_count += 1
+                    capture_state.protocol_stats[proto] += 1
+                    capture_state.pkt_list.append(pkt_data)
+
+                # Process through rules
+                for i in range(len(rules_state['protocols'])):
+                    rule_proto = rules_state['protocols'][i]
+                    rule_msg = rules_state['messages'][i]
+
+                    if rule_proto == 'any' or rule_proto == proto:
+                        # Check if packet matches rule
+                        match = True
+                        rule_src = rules_state['src_ips'][i]
+                        if rule_src != 'any' and src_ip != rule_src:
+                            match = False
+
+                        if match:
+                            rule_dport = rules_state['dst_ports'][i]
+                            if rule_dport != 'any' and str(dport) != str(rule_dport):
+                                match = False
+
+                        if match and random.random() < 0.3:
+                            alert = {
+                                'id': capture_state.alert_count + 1,
+                                'timestamp': datetime.now().isoformat(),
+                                'message': rule_msg,
+                                'src': src_ip,
+                                'dst': dst_ip,
+                                'proto': proto,
+                                'sport': sport,
+                                'dport': dport,
+                                'payload': f"Simulated {proto} packet"
+                            }
+                            capture_state.add_alert(alert, alert['payload'])
+                            break
+
+                # Process through closed-loop anomaly detection
+                if CLOSED_LOOP_AVAILABLE and closed_loop_nids:
+                    try:
+                        anomaly = closed_loop_nids.detector.process_packet(pkt_data)
+                        if anomaly and anomaly.rule_generated:
+                            load_network_rules()
+                            logger.info(f"Auto-generated rule: {anomaly.rule_id}")
+                    except Exception as e:
+                        pass
+
+                # Randomly stop attack
+                if attack_mode['active'] and random.random() < 0.1:
+                    attack_mode['active'] = False
+
+                time.sleep(random.uniform(0.01, 0.1))
+
+            except Exception as e:
+                logger.error(f"Simulation error: {e}")
+                break
+
+        logger.info("Simulation stopped")
+
+    sim_thread = threading.Thread(target=simulate_traffic)
+    sim_thread.start()
+
+def stop_capture():
+    capture_state.running = False
+
+# ==================== Routes ====================
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/interfaces')
+def api_interfaces():
+    return jsonify({'interfaces': get_interfaces()})
+
+@app.route('/api/rules')
+def api_rules():
+    return jsonify({'rules': rules_state['raw_rules']})
+
+@app.route('/api/capture', methods=['POST'])
+def api_capture():
+    data = request.json
+    action = data.get('action')
+    if action == 'start':
+        start_capture(data.get('interface'))
+        return jsonify({'status': 'started'})
+    elif action == 'stop':
+        stop_capture()
+        return jsonify({'status': 'stopped'})
+    return jsonify({'status': 'unknown'})
+
+@app.route('/api/status')
+def api_status():
+    status = capture_state.get_summary()
+    status['closed_loop_available'] = CLOSED_LOOP_AVAILABLE
+    if CLOSED_LOOP_AVAILABLE and closed_loop_nids:
+        status['closed_loop_status'] = closed_loop_nids.get_status()
+    return jsonify(status)
+
+@app.route('/api/alerts')
+def api_alerts():
+    return jsonify({'alerts': capture_state.get_alerts()})
+
+@app.route('/api/protocols')
+def api_protocols():
+    with capture_state._lock:
+        return jsonify({'stats': dict(capture_state.protocol_stats)})
+
+@app.route('/api/packets')
+def api_packets():
+    with capture_state._lock:
+        packets = []
+        for pkt in capture_state.pkt_list[-100:]:
+            if isinstance(pkt, dict):
+                packets.append(pkt)
+            else:
+                packets.append({
+                    'src': getattr(pkt, 'src', 'N/A'),
+                    'dst': getattr(pkt, 'dst', 'N/A'),
+                    'proto': 'N/A',
+                    'sport': 0,
+                    'dport': 0,
+                    'summary': str(pkt) if hasattr(pkt, '__str__') else 'N/A'
+                })
+        return jsonify({'packets': packets})
+
+@app.route('/api/upload_pcap', methods=['POST'])
+def api_upload_pcap():
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file'})
+    file = request.files['file']
+    filepath = os.path.join(TEMP_DIR, 'uploaded.pcap')
+    file.save(filepath)
+    try:
+        scapy = get_scapy()
+        cap = scapy.rdpcap(filepath)
+        for pkt in cap:
+            process_packet(pkt)
+        return jsonify({'status': 'success', 'packets': capture_state.packet_count, 'alerts': capture_state.alert_count})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/api/save_pcap', methods=['POST'])
+def api_save_pcap():
+    filename = request.json.get('filename', f"capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pcap")
+    filepath = os.path.join(PCAP_DIR, filename)
+    try:
+        with capture_state._lock:
+            pkt_list = list(capture_state.pkt_list)
+        if pkt_list:
+            scapy = get_scapy()
+            scapy.wrpcap(filepath, pkt_list)
+            return jsonify({'status': 'success', 'filename': filename})
+        return jsonify({'status': 'error', 'message': 'No packets'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+# ==================== Closed-Loop API Routes ====================
+
+@app.route('/api/closed-loop/status')
+def api_closed_loop_status():
+    """Get closed-loop system status"""
+    if not CLOSED_LOOP_AVAILABLE:
+        return jsonify({'error': 'Closed-loop not available'}), 500
+
+    return jsonify(closed_loop_nids.get_status())
+
+@app.route('/api/closed-loop/anomalies')
+def api_closed_loop_anomalies():
+    """Get recent anomalies"""
+    if not CLOSED_LOOP_AVAILABLE or not closed_loop_nids:
+        return jsonify({'error': 'Anomaly detector not available'}), 500
+
+    limit = request.args.get('limit', 20, type=int)
+    return jsonify({'anomalies': closed_loop_nids.get_anomalies(limit)})
+
+@app.route('/api/closed-loop/rules')
+def api_closed_loop_rules():
+    """Get auto-generated rules"""
+    if not CLOSED_LOOP_AVAILABLE or not closed_loop_nids:
+        return jsonify({'error': 'Rule generator not available'}), 500
+
+    return jsonify({'rules': closed_loop_nids.get_auto_rules()})
+
+@app.route('/api/closed-loop/rules/<rule_id>', methods=['POST'])
+def api_closed_loop_rule_action(rule_id):
+    """Enable/disable/delete an auto-generated rule"""
+    if not CLOSED_LOOP_AVAILABLE or not closed_loop_nids:
+        return jsonify({'error': 'Rule generator not available'}), 500
+
+    data = request.json
+    action = data.get('action')
+    rule_gen = closed_loop_nids.rule_generator
+
+    if action == 'enable':
+        rule_gen.enable_rule(rule_id)
+        load_network_rules()
+        return jsonify({'status': 'enabled'})
+    elif action == 'disable':
+        rule_gen.disable_rule(rule_id)
+        load_network_rules()
+        return jsonify({'status': 'disabled'})
+    elif action == 'delete':
+        rule_gen.delete_rule(rule_id)
+        load_network_rules()
+        return jsonify({'status': 'deleted'})
+
+    return jsonify({'error': 'Unknown action'}), 400
+
+@app.route('/api/closed-loop/config', methods=['GET', 'POST'])
+def api_closed_loop_config():
+    """Get or update closed-loop configuration"""
+    if not CLOSED_LOOP_AVAILABLE or not closed_loop_nids:
+        return jsonify({'error': 'Closed-loop not available'}), 500
+
+    if request.method == 'GET':
+        return jsonify({
+            'auto_generate_rules': closed_loop_nids.auto_generate_rules,
+            'detector_enabled': closed_loop_nids.detector.enabled,
+            'threshold': closed_loop_nids.detector.detection_threshold
+        })
+
+    # POST - update config
+    data = request.json
+
+    if 'auto_generate_rules' in data:
+        closed_loop_nids.auto_generate_rules = data['auto_generate_rules']
+
+    if 'detector_enabled' in data:
+        if data['detector_enabled']:
+            closed_loop_nids.detector.enable()
+        else:
+            closed_loop_nids.detector.disable()
+
+    if 'threshold' in data:
+        closed_loop_nids.detector.detection_threshold = data['threshold']
+
+    return jsonify({'status': 'updated'})
+
+@app.route('/api/closed-loop/reset', methods=['POST'])
+def api_closed_loop_reset():
+    """Reset the closed-loop system"""
+    if not CLOSED_LOOP_AVAILABLE or not closed_loop_nids:
+        return jsonify({'error': 'Closed-loop not available'}), 500
+
+    closed_loop_nids.detector.reset()
+    return jsonify({'status': 'reset'})
+
+@app.route('/api/closed-loop/learning-stats')
+def api_closed_loop_learning_stats():
+    """Get learning statistics from database"""
+    if not CLOSED_LOOP_AVAILABLE or not closed_loop_nids:
+        return jsonify({'error': 'Learning DB not available'}), 500
+
+    return jsonify(closed_loop_nids.learning_db.get_statistics())
+
+def init_app():
+    load_network_rules()
+    logger.info(f"NIDS Dashboard initialized")
+    logger.info(f"Interfaces available: {len(get_interfaces())}")
+    logger.info(f"Rules loaded: {len(rules_state['raw_rules'])}")
+    logger.info(f"Closed-Loop NIDS: {'Enabled' if CLOSED_LOOP_AVAILABLE else 'Disabled'}")
+
+if __name__ == '__main__':
+    init_app()
+    port = int(os.environ.get('PORT', 5000))
+    logger.info(f"Starting NIDS Dashboard on http://localhost:{port}")
+    logger.info("Press Ctrl+C to stop")
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
