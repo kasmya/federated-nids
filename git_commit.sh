@@ -36,10 +36,11 @@ if [ -z "$msg" ]; then
     exit 1
 fi
 
-# Add all changes
+# Add specific files (exclude pycache and db)
 echo ""
 echo -e "${GREEN}Adding changes...${NC}"
-git add -A
+git add README.md run_server.py nids_server.py requirements.txt start.sh Procfile runtime.txt .gitignore
+git add closed_loop/ templates/ static/ yara_rules/ saved_pcap/
 
 # Show what will be committed
 echo ""
