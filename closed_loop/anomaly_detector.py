@@ -158,7 +158,14 @@ class SimpleAnomalyDetector:
             
             # Check if any anomaly threshold is exceeded
             max_score = fv.get_max_score()
-            if max_score >= self.detection_threshold:
+            
+            # Use adaptive threshold if enabled (default for uniform traffic)
+            effective_threshold = self.detection_threshold
+            if FeatureVector._use_adaptive and FeatureVector._adaptive_stats:
+                # Adaptive thresholds are computed per-feature, use a lower base threshold
+                effective_threshold = 0.3  # Lower since we're using outlier detection
+            
+            if max_score >= effective_threshold:
                 anomaly_type = fv.get_primary_anomaly()
                 
                 # Check if this is a new or escalating anomaly
@@ -181,6 +188,14 @@ class SimpleAnomalyDetector:
             
             # Update baseline last update time
             baseline.last_update = time.time()
+            
+            # Periodically compute adaptive thresholds (every 50 packets)
+            if self.stats['total_packets_processed'] % 50 == 0:
+                all_features = self.feature_extractor.get_all_features()
+                if len(all_features) > 5:
+                    FeatureVector.enable_adaptive_thresholds(multiplier=2.0)
+                    FeatureVector.compute_adaptive_thresholds(all_features)
+                    logger.debug(f"Updated adaptive thresholds: {FeatureVector._adaptive_stats}")
             
             return None
     
