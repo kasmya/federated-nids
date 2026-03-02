@@ -62,6 +62,11 @@
                             <span class="btn-icon">⏹</span> STOP
                         </button>
                     </div>
+                    <div class="button-group vertical" style="margin-top: 10px;">
+                        <button id="demo-btn" class="cyber-btn demo">
+                            <span class="btn-icon">🎮</span> DEMO MODE
+                        </button>
+                    </div>
                 </div>
 
                 <div class="panel-section">
@@ -155,6 +160,7 @@
                     <button class="tab active" data-tab="alerts">SECURITY ALERTS</button>
                     <button class="tab" data-tab="traffic">ALL TRAFFIC</button>
                     <button class="tab" data-tab="anomalies">ANOMALIES</button>
+                    <button class="tab" data-tab="federation">FEDERATION</button>
                 </div>
 
                 <div class="tab-content active" id="alerts-tab">
@@ -214,6 +220,108 @@
                     </div>
                     <div class="anomalies-container" id="anomalies-container">
                         <p class="empty-text">No anomalies detected - Auto-learning is active</p>
+                    </div>
+                </div>
+
+                <!-- Federation Tab -->
+                <div class="tab-content" id="federation-tab">
+                    <div class="tab-toolbar">
+                        <select id="fed-scenario" class="cyber-sort">
+                            <option value="iid">IID - Same Attack Patterns</option>
+                            <option value="non_iid" selected>Non-IID - Different Attack Patterns</option>
+                            <option value="zero_day">Zero-Day - New Attack Type</option>
+                        </select>
+                        <button id="fed-start-btn" class="cyber-btn">START FEDERATION</button>
+                        <button id="fed-refresh-btn" class="cyber-btn">REFRESH</button>
+                    </div>
+                    <div class="federation-container" id="federation-container">
+                        <!-- Federation Status -->
+                        <div class="fed-status-panel">
+                            <div class="fed-stat-box">
+                                <span class="fed-stat-label">SCENARIO</span>
+                                <span class="fed-stat-value" id="fed-scenario-name">-</span>
+                            </div>
+                            <div class="fed-stat-box">
+                                <span class="fed-stat-label">ROUND</span>
+                                <span class="fed-stat-value" id="fed-current-round">0/0</span>
+                            </div>
+                            <div class="fed-stat-box">
+                                <span class="fed-stat-label">GLOBAL RULES</span>
+                                <span class="fed-stat-value" id="fed-global-rules">0</span>
+                            </div>
+                            <div class="fed-stat-box">
+                                <span class="fed-stat-label">STATUS</span>
+                                <span class="fed-stat-value" id="fed-status">IDLE</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Client Cards -->
+                        <div class="fed-clients-grid">
+                            <div class="fed-client-card">
+                                <div class="fed-client-header">CLIENT A</div>
+                                <div class="fed-client-pattern">Pattern: Port Scan</div>
+                                <div class="fed-client-stat">
+                                    <span>Packets:</span>
+                                    <span id="fed-client-A-packets">0</span>
+                                </div>
+                                <div class="fed-client-stat">
+                                    <span>Anomalies:</span>
+                                    <span id="fed-client-A-anomalies">0</span>
+                                </div>
+                                <div class="fed-client-stat">
+                                    <span>Rules:</span>
+                                    <span id="fed-client-A-rules">0</span>
+                                </div>
+                            </div>
+                            <div class="fed-client-card">
+                                <div class="fed-client-header">CLIENT B</div>
+                                <div class="fed-client-pattern">Pattern: SYN Flood</div>
+                                <div class="fed-client-stat">
+                                    <span>Packets:</span>
+                                    <span id="fed-client-B-packets">0</span>
+                                </div>
+                                <div class="fed-client-stat">
+                                    <span>Anomalies:</span>
+                                    <span id="fed-client-B-anomalies">0</span>
+                                </div>
+                                <div class="fed-client-stat">
+                                    <span>Rules:</span>
+                                    <span id="fed-client-B-rules">0</span>
+                                </div>
+                            </div>
+                            <div class="fed-client-card">
+                                <div class="fed-client-header">CLIENT C</div>
+                                <div class="fed-client-pattern">Pattern: Mixed</div>
+                                <div class="fed-client-stat">
+                                    <span>Packets:</span>
+                                    <span id="fed-client-C-packets">0</span>
+                                </div>
+                                <div class="fed-client-stat">
+                                    <span>Anomalies:</span>
+                                    <span id="fed-client-C-anomalies">0</span>
+                                </div>
+                                <div class="fed-client-stat">
+                                    <span>Rules:</span>
+                                    <span id="fed-client-C-rules">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Global Rules Section -->
+                        <div class="fed-global-rules">
+                            <h4>◈ GLOBAL RULES (FROM CONSENSUS)</h4>
+                            <div id="fed-global-rules-list" class="fed-rules-list">
+                                <p class="empty-text">No global rules yet - Run federation to generate rules</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress -->
+                        <div class="fed-progress" id="fed-progress" style="display:none;">
+                            <div class="fed-progress-bar">
+                                <div class="fed-progress-fill" id="fed-progress-fill"></div>
+                            </div>
+                            <span class="fed-progress-text" id="fed-progress-text">Running...</span>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -338,6 +446,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/matrix.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

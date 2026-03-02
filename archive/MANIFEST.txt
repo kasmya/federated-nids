@@ -1,0 +1,29 @@
+# Archived Files
+
+These files were not moved to either part:
+
+## Redundant/Deprecated
+- run_day1.py, run_day2.py, run_day3.py - Use experiments/run.py instead
+- run_federation.py - Use experiments/run.py instead
+
+## Deployment Files
+- Procfile, runtime.txt, start.sh, git_commit.sh
+- RENDER_DEPLOY.md
+
+## Research Planning Docs
+- PATENT_PROPOSAL_DRAFT.md
+- RESEARCH_COMPARISON_PLAN.md
+- FEDERATED_PLAN.md, CLOSED_LOOP_PLAN.md
+- DAY1_TODO.md, PROJECT_EXPLAINED.md
+- CODE_REVIEW_GUIDE.md
+
+## Evaluation Scripts
+- compare_baselines.py, ablate_layers.py
+- evaluate_*.py files
+- closed_loop_integration.py
+
+## Data Directories
+- saved_pcap/ - Old captures (recreate as needed)
+- nids-closedloop/ - Git submodule (not needed)
+
+After verifying both parts work, you can safely delete these files.

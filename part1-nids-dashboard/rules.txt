@@ -1,0 +1,90 @@
+# NIDS Network Detection Rules
+# Format: alert [proto] [srcip] [srcport] --> [dstip] [dstport] [message]
+# Use 'any' for wildcards
+# Use CIDR notation for IP ranges (e.g., 192.168.1.0/24)
+
+# Alert on any SSH traffic
+alert tcp any any --> any 22 SSH_DETECTED
+
+# Alert on traffic from specific IP range
+alert tcp 192.168.1.0/24 any --> any any INTERNAL_SCAN_DETECTED
+
+# Alert on traffic to suspicious port 4444
+alert tcp any any --> any 4444 SUSPICIOUS_PORT_4444
+
+# Alert on DNS tunneling attempts
+alert udp any any --> any 53 SUSPICIOUS_DNS_TRAFFIC
+
+# Alert on non-standard HTTP port
+alert tcp any any --> any 8080 NON_STANDARD_HTTP_PORT
+
+# Alert on SMB traffic (potential WannaCry)
+alert tcp any any --> any 445 SMB_TRAFFIC_DETECTED
+
+# Alert on Telnet usage
+alert tcp any any --> any 23 TELNET_DETECTED
+
+# Alert on FTP traffic
+alert tcp any any --> any 21 FTP_DETECTED
+
+# Alert on MySQL connections
+alert tcp any any --> any 3306 MYSQL_DETECTED
+
+# Alert on PostgreSQL connections
+alert tcp any any --> any 5432 POSTGRES_DETECTED
+
+# Alert on MongoDB connections
+alert tcp any any --> any 27017 MONGODB_DETECTED
+
+# Alert on Redis connections
+alert tcp any any --> any 6379 REDIS_DETECTED
+
+# Alert on RDP connections
+alert tcp any any --> any 3389 RDP_DETECTED
+
+# Alert on VNC connections
+alert tcp any any --> any 5900 VNC_DETECTED
+
+# Alert on Kubernetes API
+alert tcp any any --> any 6443 KUBERNETES_API_DETECTED
+
+# Alert on Docker API
+alert tcp any any --> any 2375 DOCKER_API_DETECTED
+
+# Alert on Elasticsearch
+alert tcp any any --> any 9200 ELASTICSEARCH_DETECTED
+
+# Alert on Memcached
+alert tcp any any --> any 11211 MEMCACHED_DETECTED
+
+# Alert on RabbitMQ
+alert tcp any any --> any 5672 RABBITMQ_DETECTED
+
+# Alert on Kafka
+alert tcp any any --> any 9092 KAFKA_DETECTED
+
+# Alert on Prometheus
+alert tcp any any --> any 9090 PROMETHEUS_DETECTED
+
+# Alert on Grafana
+alert tcp any any --> any 3000 GRAFANA_DETECTED
+
+# Alert on Jenkins
+alert tcp any any --> any 8080 JENKINS_DETECTED
+
+# Alert on internal network SSH
+alert tcp any any --> 10.0.0.0/8 22 INTERNAL_SSH_ACCESS
+
+# Alert on external database access
+alert tcp any any --> 10.0.0.0/8 3306 EXTERNAL_MYSQL_ACCESS
+alert tcp any any --> 10.0.0.0/8 5432 EXTERNAL_POSTGRES_ACCESS
+
+# Alert on NTP amplification
+alert udp any any --> any 123 NTP_AMPLIFICATION_DETECTED
+
+# Alert on DNS amplification
+alert udp any any --> any 53 DNS_AMPLIFICATION_DETECTED
+
+# Alert on SSDP amplification
+alert udp any any --> any 1900 SSDP_AMPLIFICATION_DETECTED
+

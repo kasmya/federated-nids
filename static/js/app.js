@@ -1,7 +1,10 @@
 /**
  * NIDS Dashboard - Main Application JavaScript
- * Uses HTTP polling instead of WebSocket for simplicity
+ * Uses SocketIO for real-time updates and HTTP polling as fallback
  */
+
+// SocketIO connection
+let socket = null;
 
 // Configuration
 const CONFIG = {
@@ -13,6 +16,7 @@ const CONFIG = {
 // Application State
 const state = {
     capturing: false,
+    demoMode: false,
     interfaces: [],
     selectedInterface: null,
     alerts: [],
@@ -102,11 +106,13 @@ const elements = {};
  */
 document.addEventListener('DOMContentLoaded', () => {
     initElements();
+    initSocketIO();  // Initialize SocketIO connection
     loadInterfaces();
     loadRules();
     initEventListeners();
     initClosedLoop();  // Initialize closed-loop UI
     initSorting();  // Initialize sorting
+    initDemoMode();  // Initialize demo mode
     updateTime();
     
     // Update time every second
@@ -115,6 +121,101 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update connection status
     updateConnectionStatus(true);
 });
+
+/**
+ * Initialize SocketIO connection for real-time updates
+ */
+function initSocketIO() {
+    // Check if SocketIO is available
+    if (typeof io === 'undefined') {
+        console.warn('SocketIO not available, using HTTP polling only');
+        return;
+    }
+    
+    try {
+        socket = io();
+        
+        socket.on('connect', function() {
+            console.log('SocketIO connected');
+            updateConnectionStatus(true);
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('SocketIO disconnected');
+            updateConnectionStatus(false);
+        });
+        
+        // Handle real-time packet updates
+        socket.on('packet_update', function(data) {
+            state.protocolStats = data.protocol_stats || {};
+            elements.packetCount.textContent = formatNumber(data.packet_count || 0);
+            elements.alertCount.textContent = formatNumber(data.alert_count || 0);
+            renderProtocolStats();
+            renderProtocolChart();
+        });
+        
+        // Handle new alerts in real-time
+        socket.on('new_alert', function(alert) {
+            console.log('New alert received:', alert);
+            state.alerts.unshift(alert);
+            addAlert(alert);
+        });
+        
+        // Handle new anomalies in real-time
+        socket.on('new_anomaly', function(anomaly) {
+            console.log('New anomaly detected:', anomaly);
+            state.anomalies.unshift(anomaly);
+            renderAnomalies();
+            
+            // Update closed-loop stats
+            if (elements.clAnomalies) {
+                elements.clAnomalies.textContent = (parseInt(elements.clAnomalies.textContent) || 0) + 1;
+            }
+        });
+        
+        // Handle capture events
+        socket.on('capture_started', function(data) {
+            console.log('Capture started:', data);
+            state.capturing = true;
+            updateCaptureUI(true);
+        });
+        
+        socket.on('capture_stopped', function(data) {
+            console.log('Capture stopped:', data);
+            state.capturing = false;
+            updateCaptureUI(false);
+        });
+        
+        // Handle rules loaded
+        socket.on('rules_loaded', function(data) {
+            console.log('Rules loaded:', data);
+            renderRules(data.rules || []);
+        });
+        
+        console.log('SocketIO initialized');
+    } catch (error) {
+        console.error('SocketIO init error:', error);
+    }
+}
+
+/**
+ * Update capture UI state
+ */
+function updateCaptureUI(capturing) {
+    if (capturing) {
+        elements.captureStatus.textContent = 'RUNNING';
+        elements.captureStatus.style.color = '#00ff33';
+        elements.startBtn.disabled = true;
+        elements.stopBtn.disabled = false;
+        elements.interfaceSelect.disabled = true;
+    } else {
+        elements.captureStatus.textContent = 'IDLE';
+        elements.captureStatus.style.color = '#00cc29';
+        elements.startBtn.disabled = false;
+        elements.stopBtn.disabled = true;
+        elements.interfaceSelect.disabled = false;
+    }
+}
 
 /**
  * Initialize DOM element references
@@ -267,12 +368,13 @@ function renderProtocolStats() {
  * Load protocol stats
  */
 async function loadProtocolStats() {
-    renderProtocolChart();
     try {
         const response = await fetch('/api/protocols');
         const data = await response.json();
-        state.protocolStats = data.stats || {};
+        state.protocolStats = data.protocols || {};
+        // Render both chart and stats after getting data
         renderProtocolStats();
+        renderProtocolChart();
     } catch (error) {
         console.error('Protocol stats error:', error);
     }
@@ -548,6 +650,16 @@ async function startCapture() {
  */
 async function stopCapture() {
     try {
+        // First try to stop demo mode if running
+        if (state.demoMode) {
+            await fetch('/api/demo/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            state.demoMode = false;
+        }
+        
+        // Also try regular capture stop
         const response = await fetch('/api/capture', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -555,7 +667,7 @@ async function stopCapture() {
         });
         const data = await response.json();
         
-        if (data.status === 'stopped') {
+        if (data.status === 'stopped' || data.status === 'ok') {
             showNotification('Capture stopped', 'info');
             
             // Stop polling
@@ -564,8 +676,17 @@ async function stopCapture() {
                 pollTimer = null;
             }
             
-            // Final status update
+            // Still load data - don't lose captured packets/alerts!
             await pollStatus();
+            await loadProtocolStats();
+            await loadPackets();
+            await loadAlerts();
+            
+            // Render the data
+            renderProtocolStats();
+            renderProtocolChart();
+            renderPackets();
+            renderAlerts();
         }
     } catch (error) {
         console.error('Stop capture error:', error);
@@ -948,6 +1069,162 @@ function initClosedLoop() {
 }
 
 /**
+ * Initialize Demo Mode - Add demo button and functionality
+ */
+function initDemoMode() {
+    // Create demo button if it doesn't exist
+    let demoBtn = document.getElementById('demo-btn');
+    if (!demoBtn) {
+        // Find the capture control section to add demo button
+        const captureSection = document.querySelector('.panel-section');
+        if (captureSection) {
+            const demoBtnHtml = `
+                <button id="demo-btn" class="cyber-btn demo">
+                    <span class="btn-icon">🎮</span> DEMO MODE
+                </button>
+            `;
+            const buttonGroup = captureSection.querySelector('.button-group');
+            if (buttonGroup) {
+                buttonGroup.insertAdjacentHTML('afterend', demoBtnHtml);
+            }
+        }
+    }
+    
+    demoBtn = document.getElementById('demo-btn');
+    if (demoBtn) {
+        demoBtn.addEventListener('click', toggleDemoMode);
+    }
+    
+    // Poll demo status
+    pollDemoStatus();
+    setInterval(pollDemoStatus, 3000);
+}
+
+/**
+ * Toggle demo mode on/off
+ */
+async function toggleDemoMode() {
+    const demoBtn = document.getElementById('demo-btn');
+    
+    try {
+        if (state.demoMode) {
+            // Stop demo mode
+            const response = await fetch('/api/demo/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            
+            state.demoMode = false;
+            if (demoBtn) {
+                demoBtn.classList.remove('active');
+                demoBtn.innerHTML = '<span class="btn-icon">🎮</span> DEMO MODE';
+            }
+            showNotification(`Demo stopped - ${data.packets_generated} packets generated`, 'info');
+            
+        } else {
+            // Start demo mode
+            const response = await fetch('/api/demo/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'mixed' })
+            });
+            const data = await response.json();
+            
+            if (data.status === 'started') {
+                state.demoMode = true;
+                if (demoBtn) {
+                    demoBtn.classList.add('active');
+                    demoBtn.innerHTML = '<span class="btn-icon">⏹</span> STOP DEMO';
+                }
+                showNotification('Demo mode started - Generating synthetic traffic', 'success');
+                
+                // Start polling for updates
+                startDemoPolling();
+            }
+        }
+    } catch (error) {
+        console.error('Demo toggle error:', error);
+        showNotification('Error toggling demo mode', 'error');
+    }
+}
+
+/**
+ * Poll demo mode status
+ */
+async function pollDemoStatus() {
+    try {
+        const response = await fetch('/api/demo/status');
+        const data = await response.json();
+        
+        const demoBtn = document.getElementById('demo-btn');
+        if (demoBtn) {
+            if (data.running && !state.demoMode) {
+                state.demoMode = true;
+                demoBtn.classList.add('active');
+                demoBtn.innerHTML = '<span class="btn-icon">⏹</span> STOP DEMO';
+            } else if (!data.running && state.demoMode) {
+                state.demoMode = false;
+                demoBtn.classList.remove('active');
+                demoBtn.innerHTML = '<span class="btn-icon">🎮</span> DEMO MODE';
+            }
+        }
+    } catch (error) {
+        // Silently fail - demo status is optional
+    }
+}
+
+/**
+ * Start polling for demo updates
+ */
+let demoPollInterval = null;
+
+function startDemoPolling() {
+    if (demoPollInterval) {
+        clearInterval(demoPollInterval);
+    }
+    
+    demoPollInterval = setInterval(async () => {
+        try {
+            // Poll status
+            const response = await fetch('/api/status');
+            const data = await response.json();
+            
+            elements.packetCount.textContent = formatNumber(data.packet_count || 0);
+            elements.alertCount.textContent = formatNumber(data.alert_count || 0);
+            
+            // Load packets
+            await loadPackets();
+            
+            // Load alerts
+            await loadAlerts();
+            
+            // Load protocol stats
+            await loadProtocolStats();
+            
+            // Check if demo still running
+            const demoStatus = await fetch('/api/demo/status');
+            const demoData = await demoStatus.json();
+            
+            if (!demoData.running && state.demoMode) {
+                state.demoMode = false;
+                clearInterval(demoPollInterval);
+                demoPollInterval = null;
+                
+                const demoBtn = document.getElementById('demo-btn');
+                if (demoBtn) {
+                    demoBtn.classList.remove('active');
+                    demoBtn.innerHTML = '<span class="btn-icon">🎮</span> DEMO MODE';
+                }
+            }
+            
+        } catch (error) {
+            console.error('Demo polling error:', error);
+        }
+    }, 800);  // Poll faster during demo mode
+}
+
+/**
  * Initialize YARA scanner UI
  */
 function initYaraScanner() {
@@ -1013,19 +1290,22 @@ async function pollClosedLoopStatus() {
         const response = await fetch('/api/closed-loop/status');
         const data = await response.json();
         
+        // Fix: API returns data.stats, not data.detector
+        const stats = data.stats || {};
+        
         // Update UI stats
         if (elements.clAnomalies) {
-            elements.clAnomalies.textContent = data.detector?.total_anomalies || 0;
+            elements.clAnomalies.textContent = stats.total_anomalies || 0;
         }
         if (elements.clRulesGenerated) {
-            elements.clRulesGenerated.textContent = data.rule_generator?.total_generated || 0;
+            elements.clRulesGenerated.textContent = stats.rules_generated || 0;
         }
         if (elements.clTrackedIps) {
-            elements.clTrackedIps.textContent = data.detector?.tracked_ips || 0;
+            elements.clTrackedIps.textContent = stats.tracked_ips || 0;
         }
         
         // Update learning status indicator
-        if (elements.learningStatus && data.detector?.enabled) {
+        if (elements.learningStatus && data.enabled) {
             elements.learningStatus.textContent = '● ACTIVE';
             elements.learningStatus.style.color = '#00ff33';
         } else if (elements.learningStatus) {
@@ -1119,4 +1399,258 @@ async function toggleLearning() {
         console.error('Toggle learning error:', error);
     }
 }
+
+/* ============== FEDERATION FUNCTIONS ============== */
+
+// Federation state
+const federationState = {
+    isRunning: false,
+    currentRound: 0,
+    totalRounds: 0,
+    clients: {},
+    globalRules: [],
+    results: {},
+    status: 'IDLE'
+};
+
+// Federation DOM elements
+const fedElements = {};
+
+/**
+ * Initialize federation elements
+ */
+function initFederationElements() {
+    fedElements.scenario = document.getElementById('fed-scenario');
+    fedElements.startBtn = document.getElementById('fed-start-btn');
+    fedElements.refreshBtn = document.getElementById('fed-refresh-btn');
+    fedElements.scenarioName = document.getElementById('fed-scenario-name');
+    fedElements.currentRound = document.getElementById('fed-current-round');
+    fedElements.globalRules = document.getElementById('fed-global-rules');
+    fedElements.status = document.getElementById('fed-status');
+    fedElements.progress = document.getElementById('fed-progress');
+    fedElements.progressFill = document.getElementById('fed-progress-fill');
+    fedElements.progressText = document.getElementById('fed-progress-text');
+    fedElements.globalRulesList = document.getElementById('fed-global-rules-list');
+    
+    // Client elements
+    ['A', 'B', 'C'].forEach(client => {
+        fedElements[`client${client}Packets`] = document.getElementById(`fed-client-${client}-packets`);
+        fedElements[`client${client}Anomalies`] = document.getElementById(`fed-client-${client}-anomalies`);
+        fedElements[`client${client}Rules`] = document.getElementById(`fed-client-${client}-rules`);
+    });
+}
+
+/**
+ * Load federation status from API
+ */
+async function loadFederationStatus() {
+    try {
+        const response = await fetch('/api/federation/status');
+        const data = await response.json();
+        
+        federationState.isRunning = data.is_running || false;
+        federationState.currentRound = data.current_round || 0;
+        federationState.totalRounds = data.total_rounds || 0;
+        federationState.clients = data.clients || {};
+        federationState.globalRules = data.global_rules || [];
+        federationState.results = data.results || {};
+        
+        updateFederationUI();
+    } catch (error) {
+        console.error('Load federation status error:', error);
+    }
+}
+
+/**
+ * Update federation UI elements
+ */
+function updateFederationUI() {
+    if (!fedElements.status) return;
+    
+    // Update status
+    if (federationState.isRunning) {
+        federationState.status = 'RUNNING';
+        fedElements.status.textContent = 'RUNNING';
+        fedElements.status.style.color = '#00ff33';
+        fedElements.progress.style.display = 'block';
+        
+        // Update progress bar
+        const progress = (federationState.currentRound / federationState.totalRounds) * 100;
+        fedElements.progressFill.style.width = `${progress}%`;
+        fedElements.progressText.textContent = `Round ${federationState.currentRound}/${federationState.totalRounds}`;
+        
+        if (fedElements.startBtn) {
+            fedElements.startBtn.disabled = true;
+            fedElements.startBtn.textContent = 'RUNNING...';
+        }
+    } else {
+        federationState.status = 'IDLE';
+        fedElements.status.textContent = 'IDLE';
+        fedElements.status.style.color = '#888';
+        fedElements.progress.style.display = 'none';
+        
+        if (fedElements.startBtn) {
+            fedElements.startBtn.disabled = false;
+            fedElements.startBtn.textContent = 'START FEDERATION';
+        }
+    }
+    
+    // Update scenario name
+    if (fedElements.scenarioName && fedElements.scenario) {
+        const scenario = fedElements.scenario.value;
+        const scenarioNames = {
+            'iid': 'IID - Same Patterns',
+            'non_iid': 'Non-IID - Different Patterns',
+            'zero_day': 'Zero-Day Attack'
+        };
+        fedElements.scenarioName.textContent = scenarioNames[scenario] || scenario;
+    }
+    
+    // Update round
+    if (fedElements.currentRound) {
+        fedElements.currentRound.textContent = `${federationState.currentRound}/${federationState.totalRounds}`;
+    }
+    
+    // Update global rules count
+    if (fedElements.globalRules) {
+        fedElements.globalRules.textContent = federationState.globalRules.length || 0;
+    }
+    
+    // Update client cards - use lowercase keys
+    ['A', 'B', 'C'].forEach(client => {
+        const lowercaseClient = client.toLowerCase();
+        const clientData = federationState.clients[`client_${lowercaseClient}`] || federationState.clients[lowercaseClient] || {};
+        const packetsEl = fedElements[`client${client}Packets`];
+        const anomaliesEl = fedElements[`client${client}Anomalies`];
+        const rulesEl = fedElements[`client${client}Rules`];
+        
+        if (packetsEl) packetsEl.textContent = clientData.packets || 0;
+        if (anomaliesEl) anomaliesEl.textContent = clientData.anomalies || 0;
+        if (rulesEl) rulesEl.textContent = clientData.rules || 0;
+    });
+    
+    // Update global rules list
+    if (fedElements.globalRulesList) {
+        if (federationState.globalRules.length > 0) {
+            fedElements.globalRulesList.innerHTML = federationState.globalRules.map(rule => 
+                `<div class="fed-rule-item">${escapeHtml(rule)}</div>`
+            ).join('');
+        } else {
+            fedElements.globalRulesList.innerHTML = '<p class="empty-text">No global rules yet - Run federation to generate rules</p>';
+        }
+    }
+}
+
+/**
+ * Start federation
+ */
+async function startFederation() {
+    if (!fedElements.scenario) return;
+    
+    const scenario = fedElements.scenario.value;
+    const numRounds = 3; // Default rounds
+    
+    try {
+        const response = await fetch('/api/federation/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                num_rounds: numRounds,
+                scenario: scenario
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'started') {
+            federationState.isRunning = true;
+            federationState.totalRounds = data.num_rounds;
+            federationState.currentRound = 0;
+            
+            updateFederationUI();
+            showNotification(`Federation started: ${scenario}`, 'success');
+            
+            // Start polling for status updates
+            pollFederationStatus();
+        }
+    } catch (error) {
+        console.error('Start federation error:', error);
+        showNotification('Failed to start federation', 'error');
+    }
+}
+
+/**
+ * Poll federation status periodically
+ */
+let federationPollInterval = null;
+
+function pollFederationStatus() {
+    if (federationPollInterval) {
+        clearInterval(federationPollInterval);
+    }
+    
+    federationPollInterval = setInterval(async () => {
+        await loadFederationStatus();
+        
+        if (!federationState.isRunning) {
+            clearInterval(federationPollInterval);
+            federationPollInterval = null;
+            
+            // Load results when done
+            await loadFederationResults();
+        }
+    }, 2000);
+}
+
+/**
+ * Load federation results
+ */
+async function loadFederationResults() {
+    try {
+        const response = await fetch('/api/federation/results');
+        const data = await response.json();
+        
+        federationState.results = data.results || {};
+        
+        // Update global rules
+        const globalRulesResponse = await fetch('/api/federation/global-rules');
+        const globalRulesData = await globalRulesResponse.json();
+        federationState.globalRules = globalRulesData.global_rules || [];
+        
+        updateFederationUI();
+        
+        if (!federationState.isRunning) {
+            showNotification('Federation completed!', 'success');
+        }
+    } catch (error) {
+        console.error('Load federation results error:', error);
+    }
+}
+
+/**
+ * Initialize federation event listeners
+ */
+function initFederationEvents() {
+    initFederationElements();
+    
+    if (fedElements.startBtn) {
+        fedElements.startBtn.addEventListener('click', startFederation);
+    }
+    
+    if (fedElements.refreshBtn) {
+        fedElements.refreshBtn.addEventListener('click', async () => {
+            await loadFederationStatus();
+            await loadFederationResults();
+            showNotification('Federation data refreshed', 'info');
+        });
+    }
+    
+    // Load initial status
+    loadFederationStatus();
+}
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    initFederationEvents();
+});
 

@@ -1,0 +1,23 @@
+============================================================
+FEDERATED NIDS SIMULATION RESULTS
+============================================================
+
+Configuration:
+  Scenario: non_iid
+  Rounds: 3
+  Packets/round: 500
+
+Start: 2026-02-28T23:27:36.722712
+End: 2026-02-28T23:29:15.969533
+
+Totals:
+  Packets processed: 4500
+  Anomalies detected: 21
+  Rules generated: 6
+
+Per-Round Summary:
+  Round 1: 47.02s, avg packets: 500, total anomalies: 11
+  Round 2: 36.51s, avg packets: 500, total anomalies: 7
+  Round 3: 15.70s, avg packets: 500, total anomalies: 3
+
+============================================================

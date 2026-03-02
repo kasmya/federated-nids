@@ -1,0 +1,150 @@
+# Client: client_C | Round: 0
+alert tcp 192.168.1.100 any --> any any AUTO_SYN_FLOOD_294feada
+# Client: client_C | Round: 0
+alert tcp 192.168.1.100 any --> any any AUTO_PORT_SCAN_3fc24bd8
+# Client: client_C | Round: 0
+alert tcp 192.168.1.12 any --> any any AUTO_SYN_FLOOD_1c7fb3e9
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_SYN_FLOOD_5ba26c43
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_319ea65e
+# Client: client_C | Round: 0
+alert tcp 192.168.1.12 any --> any any AUTO_SYN_FLOOD_1c7fb3e9
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_SYN_FLOOD_5ba26c43
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_319ea65e
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_ed23f048
+# Client: client_C | Round: 0
+alert icmp 192.168.1.69 any --> any any AUTO_ICMP_FLOOD_29b50e82
+# Client: client_C | Round: 0
+alert tcp 192.168.1.12 any --> any any AUTO_SYN_FLOOD_1c7fb3e9
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_SYN_FLOOD_5ba26c43
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_319ea65e
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_ed23f048
+# Client: client_C | Round: 0
+alert icmp 192.168.1.69 any --> any any AUTO_ICMP_FLOOD_29b50e82
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_319ea65e
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_ed23f048
+# Client: client_C | Round: 0
+alert icmp 192.168.1.69 any --> any any AUTO_ICMP_FLOOD_29b50e82
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_SYN_FLOOD_dc7f5b42
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_ed23f048
+# Client: client_C | Round: 0
+alert icmp 192.168.1.69 any --> any any AUTO_ICMP_FLOOD_29b50e82
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_SYN_FLOOD_dc7f5b42
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_01aa0fb4
+# Client: client_C | Round: 0
+alert tcp 192.168.1.69 any --> any any AUTO_PORT_SCAN_ed23f048
+# Client: client_C | Round: 0
+alert icmp 192.168.1.69 any --> any any AUTO_ICMP_FLOOD_29b50e82
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_SYN_FLOOD_dc7f5b42
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_01aa0fb4
+# Client: client_C | Round: 0
+alert tcp 192.168.1.110 any --> any any AUTO_PORT_SCAN_187134bd
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_SYN_FLOOD_dc7f5b42
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_01aa0fb4
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.110 any --> any any AUTO_PORT_SCAN_187134bd
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_SYN_FLOOD_dc7f5b42
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_01aa0fb4
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.110 any --> any any AUTO_PORT_SCAN_187134bd
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_SYN_FLOOD_dc7f5b42
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_01aa0fb4
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_01aa0fb4
+# Client: client_C | Round: 0
+alert tcp 192.168.1.116 any --> any any AUTO_SYN_FLOOD_0745739f
+# Client: client_C | Round: 0
+alert tcp 192.168.1.126 any --> any any AUTO_SYN_FLOOD_b9925e15
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_01aa0fb4
+# Client: client_C | Round: 0
+alert tcp 192.168.1.116 any --> any any AUTO_SYN_FLOOD_0745739f
+# Client: client_C | Round: 0
+alert tcp 192.168.1.126 any --> any any AUTO_SYN_FLOOD_b9925e15
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_3fd71858
+# Client: client_C | Round: 0
+alert tcp 192.168.1.227 any --> any any AUTO_PORT_SCAN_01aa0fb4
+# Client: client_C | Round: 0
+alert tcp 192.168.1.116 any --> any any AUTO_SYN_FLOOD_0745739f
+# Client: client_C | Round: 0
+alert tcp 192.168.1.126 any --> any any AUTO_SYN_FLOOD_b9925e15
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.126 any --> any any AUTO_SYN_FLOOD_b9925e15
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.126 any --> any any AUTO_PORT_SCAN_6aaf50c0
+# Client: client_C | Round: 0
+alert tcp 192.168.1.47 any --> any any AUTO_SYN_FLOOD_d77177f7
+# Client: client_C | Round: 0
+alert tcp 192.168.1.47 any --> any any AUTO_PORT_SCAN_e27ccdcb
+# Client: client_C | Round: 0
+alert tcp 192.168.1.126 any --> any any AUTO_SYN_FLOOD_b9925e15
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.126 any --> any any AUTO_PORT_SCAN_6aaf50c0
+# Client: client_C | Round: 0
+alert tcp 192.168.1.47 any --> any any AUTO_SYN_FLOOD_d77177f7
+# Client: client_C | Round: 0
+alert tcp 192.168.1.47 any --> any any AUTO_PORT_SCAN_e27ccdcb
+# Client: client_C | Round: 0
+alert tcp 192.168.1.101 any --> any any AUTO_SYN_FLOOD_dcb7fe72
+# Client: client_C | Round: 0
+alert tcp 192.168.1.126 any --> any any AUTO_PORT_SCAN_6aaf50c0
+# Client: client_C | Round: 0
+alert tcp 192.168.1.47 any --> any any AUTO_SYN_FLOOD_d77177f7
+# Client: client_C | Round: 0
+alert tcp 192.168.1.47 any --> any any AUTO_PORT_SCAN_e27ccdcb
+# Client: client_C | Round: 0
+alert icmp 192.168.1.47 any --> any any AUTO_ICMP_FLOOD_23bb768f

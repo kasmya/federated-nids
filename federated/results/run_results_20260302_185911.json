@@ -1,0 +1,275 @@
+{
+  "config": {
+    "num_rounds": 3,
+    "packets_per_round": 500,
+    "data_dir": "federated/data",
+    "output_dir": "federated/results",
+    "log_dir": "federated/logs",
+    "consensus_server": "http://localhost:5000",
+    "scenario": "zero_day"
+  },
+  "start_time": "2026-03-02T18:59:11.604128",
+  "end_time": "2026-03-02T18:59:11.713200",
+  "rounds": [
+    {
+      "round": 1,
+      "time_seconds": 0.02782917022705078,
+      "clients": [
+        {
+          "cid": "client_A",
+          "samples": 500,
+          "metrics": {
+            "loss": 0.998,
+            "packets_processed": 500,
+            "anomalies_detected": 1,
+            "rules_generated": 0,
+            "attack_packets_seen": 151,
+            "normal_packets_seen": 349,
+            "global_rules_received": 0,
+            "fit_time": 0.00947880744934082
+          }
+        },
+        {
+          "cid": "client_B",
+          "samples": 500,
+          "metrics": {
+            "loss": 0.996,
+            "packets_processed": 500,
+            "anomalies_detected": 2,
+            "rules_generated": 0,
+            "attack_packets_seen": 151,
+            "normal_packets_seen": 349,
+            "global_rules_received": 0,
+            "fit_time": 0.009350776672363281
+          }
+        },
+        {
+          "cid": "client_C",
+          "samples": 500,
+          "metrics": {
+            "loss": 0.998,
+            "packets_processed": 500,
+            "anomalies_detected": 1,
+            "rules_generated": 0,
+            "attack_packets_seen": 151,
+            "normal_packets_seen": 349,
+            "global_rules_received": 0,
+            "fit_time": 0.008627891540527344
+          }
+        }
+      ],
+      "averages": {
+        "packets": 500,
+        "anomalies": 4,
+        "rules": 0
+      }
+    },
+    {
+      "round": 2,
+      "time_seconds": 0.032308101654052734,
+      "clients": [
+        {
+          "cid": "client_A",
+          "samples": 500,
+          "metrics": {
+            "loss": 1.0,
+            "packets_processed": 500,
+            "anomalies_detected": 0,
+            "rules_generated": 0,
+            "attack_packets_seen": 146,
+            "normal_packets_seen": 354,
+            "global_rules_received": 0,
+            "fit_time": 0.01037907600402832
+          }
+        },
+        {
+          "cid": "client_B",
+          "samples": 500,
+          "metrics": {
+            "loss": 1.0,
+            "packets_processed": 500,
+            "anomalies_detected": 0,
+            "rules_generated": 0,
+            "attack_packets_seen": 163,
+            "normal_packets_seen": 337,
+            "global_rules_received": 0,
+            "fit_time": 0.010866165161132812
+          }
+        },
+        {
+          "cid": "client_C",
+          "samples": 500,
+          "metrics": {
+            "loss": 1.0,
+            "packets_processed": 500,
+            "anomalies_detected": 0,
+            "rules_generated": 0,
+            "attack_packets_seen": 144,
+            "normal_packets_seen": 356,
+            "global_rules_received": 0,
+            "fit_time": 0.010724306106567383
+          }
+        }
+      ],
+      "averages": {
+        "packets": 500,
+        "anomalies": 0,
+        "rules": 0
+      }
+    },
+    {
+      "round": 3,
+      "time_seconds": 0.03566122055053711,
+      "clients": [
+        {
+          "cid": "client_A",
+          "samples": 500,
+          "metrics": {
+            "loss": 1.0,
+            "packets_processed": 500,
+            "anomalies_detected": 0,
+            "rules_generated": 0,
+            "attack_packets_seen": 152,
+            "normal_packets_seen": 348,
+            "global_rules_received": 0,
+            "fit_time": 0.011802196502685547
+          }
+        },
+        {
+          "cid": "client_B",
+          "samples": 500,
+          "metrics": {
+            "loss": 1.0,
+            "packets_processed": 500,
+            "anomalies_detected": 0,
+            "rules_generated": 0,
+            "attack_packets_seen": 145,
+            "normal_packets_seen": 355,
+            "global_rules_received": 0,
+            "fit_time": 0.011920928955078125
+          }
+        },
+        {
+          "cid": "client_C",
+          "samples": 500,
+          "metrics": {
+            "loss": 1.0,
+            "packets_processed": 500,
+            "anomalies_detected": 0,
+            "rules_generated": 0,
+            "attack_packets_seen": 167,
+            "normal_packets_seen": 333,
+            "global_rules_received": 0,
+            "fit_time": 0.011661052703857422
+          }
+        }
+      ],
+      "averages": {
+        "packets": 500,
+        "anomalies": 0,
+        "rules": 0
+      }
+    }
+  ],
+  "client_metrics": {
+    "client_A": {
+      "total_packets": 1500,
+      "rounds_participated": 3,
+      "round_metrics": [
+        {
+          "round": 1,
+          "packets_processed": 500,
+          "anomalies_detected": 1,
+          "rules_generated": 0,
+          "attack_packets_seen": 151,
+          "normal_packets_seen": 349,
+          "timestamp": 1772458151.622383
+        },
+        {
+          "round": 2,
+          "packets_processed": 500,
+          "anomalies_detected": 0,
+          "rules_generated": 0,
+          "attack_packets_seen": 146,
+          "normal_packets_seen": 354,
+          "timestamp": 1772458151.6521091
+        },
+        {
+          "round": 3,
+          "packets_processed": 500,
+          "anomalies_detected": 0,
+          "rules_generated": 0,
+          "attack_packets_seen": 152,
+          "normal_packets_seen": 348,
+          "timestamp": 1772458151.685916
+        }
+      ]
+    },
+    "client_B": {
+      "total_packets": 1500,
+      "rounds_participated": 3,
+      "round_metrics": [
+        {
+          "round": 1,
+          "packets_processed": 500,
+          "anomalies_detected": 2,
+          "rules_generated": 0,
+          "attack_packets_seen": 151,
+          "normal_packets_seen": 349,
+          "timestamp": 1772458151.632833
+        },
+        {
+          "round": 2,
+          "packets_processed": 500,
+          "anomalies_detected": 0,
+          "rules_generated": 0,
+          "attack_packets_seen": 163,
+          "normal_packets_seen": 337,
+          "timestamp": 1772458151.662477
+        },
+        {
+          "round": 3,
+          "packets_processed": 500,
+          "anomalies_detected": 0,
+          "rules_generated": 0,
+          "attack_packets_seen": 145,
+          "normal_packets_seen": 355,
+          "timestamp": 1772458151.6977332
+        }
+      ]
+    },
+    "client_C": {
+      "total_packets": 1500,
+      "rounds_participated": 3,
+      "round_metrics": [
+        {
+          "round": 1,
+          "packets_processed": 500,
+          "anomalies_detected": 1,
+          "rules_generated": 0,
+          "attack_packets_seen": 151,
+          "normal_packets_seen": 349,
+          "timestamp": 1772458151.641143
+        },
+        {
+          "round": 2,
+          "packets_processed": 500,
+          "anomalies_detected": 0,
+          "rules_generated": 0,
+          "attack_packets_seen": 144,
+          "normal_packets_seen": 356,
+          "timestamp": 1772458151.6735759
+        },
+        {
+          "round": 3,
+          "packets_processed": 500,
+          "anomalies_detected": 0,
+          "rules_generated": 0,
+          "attack_packets_seen": 167,
+          "normal_packets_seen": 333,
+          "timestamp": 1772458151.7095182
+        }
+      ]
+    }
+  }
+}

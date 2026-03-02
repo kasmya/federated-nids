@@ -1262,3 +1262,203 @@ body {
     background: var(--bg-tertiary);
     color: var(--text-primary);
 }
+
+/* ============== FEDERATION STYLES ============== */
+.federation-container {
+    padding: 15px;
+    height: calc(100% - 60px);
+    overflow-y: auto;
+}
+
+.fed-status-panel {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.fed-stat-box {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--matrix-green-dark);
+    border-radius: 6px;
+    padding: 12px;
+    text-align: center;
+}
+
+.fed-stat-label {
+    display: block;
+    font-size: 9px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+}
+
+.fed-stat-value {
+    display: block;
+    font-size: 16px;
+    color: var(--matrix-green);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+}
+
+.fed-clients-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.fed-client-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--matrix-green-dark);
+    border-radius: 8px;
+    padding: 15px;
+    transition: all 0.3s ease;
+}
+
+.fed-client-card:hover {
+    border-color: var(--matrix-green);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+}
+
+.fed-client-header {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--matrix-green);
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.fed-client-pattern {
+    font-size: 10px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.fed-client-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--border-color);
+}
+
+.fed-client-stat:last-child {
+    border-bottom: none;
+}
+
+.fed-client-stat span:first-child {
+    color: var(--text-secondary);
+}
+
+.fed-client-stat span:last-child {
+    color: var(--matrix-green);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+}
+
+.fed-global-rules {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--matrix-green-dark);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.fed-global-rules h4 {
+    font-size: 12px;
+    color: var(--matrix-green);
+    font-family: 'Orbitron', sans-serif;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+}
+
+.fed-rules-list {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.fed-rule-item {
+    padding: 8px 10px;
+    background: var(--bg-secondary);
+    border-left: 3px solid var(--matrix-green);
+    margin-bottom: 8px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-primary);
+    word-break: break-all;
+}
+
+.fed-progress {
+    margin-top: 15px;
+    padding: 15px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.fed-progress-bar {
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.fed-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--matrix-green), #00ff88);
+    border-radius: 4px;
+    animation: fed-progress-anim 2s ease-in-out infinite;
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+@keyframes fed-progress-anim {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
+}
+
+.fed-progress-text {
+    font-size: 11px;
+    color: var(--matrix-green);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    display: block;
+}
+
+.empty-text {
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
+    font-size: 12px;
+}
+
+/* Demo Button Styles */
+.cyber-btn.demo {
+    border-color: var(--matrix-purple);
+    color: var(--matrix-purple);
+    background: rgba(153, 51, 255, 0.1);
+}
+
+.cyber-btn.demo:hover:not(:disabled) {
+    background: var(--matrix-purple);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(153, 51, 255, 0.6);
+}
+
+.cyber-btn.demo.active {
+    background: var(--matrix-purple);
+    color: #fff;
+    animation: demo-pulse 1s infinite;
+}
+
+@keyframes demo-pulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(153, 51, 255, 0.5); }
+    50% { box-shadow: 0 0 20px rgba(153, 51, 255, 0.8); }
+}

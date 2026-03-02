@@ -1,0 +1,43 @@
+============================================================
+EXPERIMENT SUMMARY REPORT
+============================================================
+
+Scenario: NON_IID
+----------------------------------------
+Global rules created: 1
+  ★ alert tcp 192.168.1.100 any -> any any (msg:"PORT_SCAN_DETEC...
+    Supported by: ['client_A', 'client_A']
+
+Round breakdown:
+  Round 1:
+    client_A: 50 rules, 50 anomalies
+    client_B: 0 rules, 0 anomalies
+    client_C: 0 rules, 0 anomalies
+  Round 2:
+    client_A: 100 rules, 100 anomalies
+    client_B: 0 rules, 0 anomalies
+    client_C: 0 rules, 0 anomalies
+  Round 3:
+    client_A: 100 rules, 100 anomalies
+    client_B: 0 rules, 0 anomalies
+    client_C: 0 rules, 0 anomalies
+
+Scenario: IID
+----------------------------------------
+Global rules created: 1
+  ★ alert tcp 192.168.1.100 any -> any any (msg:"PORT_SCAN_DETEC...
+    Supported by: ['client_A', 'client_A']
+
+Round breakdown:
+  Round 1:
+    client_A: 50 rules, 50 anomalies
+    client_B: 0 rules, 0 anomalies
+    client_C: 50 rules, 50 anomalies
+  Round 2:
+    client_A: 100 rules, 100 anomalies
+    client_B: 0 rules, 0 anomalies
+    client_C: 100 rules, 100 anomalies
+  Round 3:
+    client_A: 100 rules, 100 anomalies
+    client_B: 0 rules, 0 anomalies
+    client_C: 100 rules, 100 anomalies

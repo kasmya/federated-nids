@@ -1,0 +1,91 @@
+{
+  "timestamp": "2026-02-18T01:07:23.952311",
+  "total_packets": 470,
+  "attack_packets": 170,
+  "results": [
+    {
+      "name": "NIDS Closed-Loop (Our System)",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "Traditional Threshold-Based",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "Statistical Anomaly (Z-Score)",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "Isolation Forest (Simulated)",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "Simple Rate Limiting",
+      "alerts": 0,
+      "metrics": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 170,
+        "precision": 0,
+        "recall": 0.0,
+        "f1": 0
+      }
+    },
+    {
+      "name": "Port Scan Detector Only",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "Ensemble Detection",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    }
+  ]
+}

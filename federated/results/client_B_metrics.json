@@ -1,0 +1,35 @@
+{
+  "client_id": "client_B",
+  "current_round": 3,
+  "total_packets_processed": 1500,
+  "round_metrics": [
+    {
+      "round": 1,
+      "packets_processed": 500,
+      "anomalies_detected": 5,
+      "rules_generated": 1,
+      "attack_packets_seen": 162,
+      "normal_packets_seen": 338,
+      "timestamp": 1772458342.8010318
+    },
+    {
+      "round": 2,
+      "packets_processed": 500,
+      "anomalies_detected": 2,
+      "rules_generated": 0,
+      "attack_packets_seen": 164,
+      "normal_packets_seen": 336,
+      "timestamp": 1772458384.670169
+    },
+    {
+      "round": 3,
+      "packets_processed": 500,
+      "anomalies_detected": 0,
+      "rules_generated": 0,
+      "attack_packets_seen": 162,
+      "normal_packets_seen": 338,
+      "timestamp": 1772458395.271196
+    }
+  ],
+  "global_rules_received": 0
+}

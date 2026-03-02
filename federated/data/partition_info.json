@@ -1,0 +1,10 @@
+{
+  "generated_at": "2026-03-02T19:01:51.371886",
+  "packets_per_client": 5000,
+  "partitions": {
+    "client_A": "federated/data/client_A_packets.json",
+    "client_B": "federated/data/client_B_packets.json",
+    "client_C": "federated/data/client_C_packets.json"
+  },
+  "scenario": "Non-IID (different attack patterns per client)"
+}

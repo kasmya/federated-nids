@@ -1,0 +1,338 @@
+{
+  "non_iid": {
+    "total_rounds": 3,
+    "rounds": [
+      {
+        "round": 1,
+        "clients": [
+          {
+            "cid": "client_A",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.5,
+              "anomalies_detected": 50,
+              "rules_generated": 50,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_B",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_C",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          }
+        ],
+        "global_rules": [
+          {
+            "rule_string": "alert tcp 192.168.1.100 any -> any any (msg:\"PORT_SCAN_DETECTED\"; sid:1001;)",
+            "anomaly_type": "port_scan",
+            "supporting_clients": [
+              "client_A",
+              "client_A"
+            ],
+            "promotion_time": 2
+          }
+        ],
+        "consensus_stats": {
+          "rules_submitted": 450,
+          "rules_promoted": 1
+        }
+      },
+      {
+        "round": 2,
+        "clients": [
+          {
+            "cid": "client_A",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.0,
+              "anomalies_detected": 100,
+              "rules_generated": 100,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_B",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_C",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          }
+        ],
+        "global_rules": [
+          {
+            "rule_string": "alert tcp 192.168.1.100 any -> any any (msg:\"PORT_SCAN_DETECTED\"; sid:1001;)",
+            "anomaly_type": "port_scan",
+            "supporting_clients": [
+              "client_A",
+              "client_A"
+            ],
+            "promotion_time": 2
+          }
+        ],
+        "consensus_stats": {
+          "rules_submitted": 450,
+          "rules_promoted": 1
+        }
+      },
+      {
+        "round": 3,
+        "clients": [
+          {
+            "cid": "client_A",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.0,
+              "anomalies_detected": 100,
+              "rules_generated": 100,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_B",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_C",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          }
+        ],
+        "global_rules": [
+          {
+            "rule_string": "alert tcp 192.168.1.100 any -> any any (msg:\"PORT_SCAN_DETECTED\"; sid:1001;)",
+            "anomaly_type": "port_scan",
+            "supporting_clients": [
+              "client_A",
+              "client_A"
+            ],
+            "promotion_time": 2
+          }
+        ],
+        "consensus_stats": {
+          "rules_submitted": 450,
+          "rules_promoted": 1
+        }
+      }
+    ],
+    "final_global_rules": [
+      {
+        "rule_string": "alert tcp 192.168.1.100 any -> any any (msg:\"PORT_SCAN_DETECTED\"; sid:1001;)",
+        "anomaly_type": "port_scan",
+        "supporting_clients": [
+          "client_A",
+          "client_A"
+        ],
+        "promotion_time": 2
+      }
+    ],
+    "scenario": "non_iid",
+    "timestamp": "2026-03-01T00:12:43.621511"
+  },
+  "iid": {
+    "total_rounds": 3,
+    "rounds": [
+      {
+        "round": 1,
+        "clients": [
+          {
+            "cid": "client_A",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.5,
+              "anomalies_detected": 50,
+              "rules_generated": 50,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_B",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_C",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.5,
+              "anomalies_detected": 50,
+              "rules_generated": 50,
+              "packets_processed": 100
+            }
+          }
+        ],
+        "global_rules": [
+          {
+            "rule_string": "alert tcp 192.168.1.100 any -> any any (msg:\"PORT_SCAN_DETECTED\"; sid:1001;)",
+            "anomaly_type": "port_scan",
+            "supporting_clients": [
+              "client_A",
+              "client_A"
+            ],
+            "promotion_time": 2
+          }
+        ],
+        "consensus_stats": {
+          "rules_submitted": 900,
+          "rules_promoted": 1
+        }
+      },
+      {
+        "round": 2,
+        "clients": [
+          {
+            "cid": "client_A",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.0,
+              "anomalies_detected": 100,
+              "rules_generated": 100,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_B",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_C",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.0,
+              "anomalies_detected": 100,
+              "rules_generated": 100,
+              "packets_processed": 100
+            }
+          }
+        ],
+        "global_rules": [
+          {
+            "rule_string": "alert tcp 192.168.1.100 any -> any any (msg:\"PORT_SCAN_DETECTED\"; sid:1001;)",
+            "anomaly_type": "port_scan",
+            "supporting_clients": [
+              "client_A",
+              "client_A"
+            ],
+            "promotion_time": 2
+          }
+        ],
+        "consensus_stats": {
+          "rules_submitted": 900,
+          "rules_promoted": 1
+        }
+      },
+      {
+        "round": 3,
+        "clients": [
+          {
+            "cid": "client_A",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.0,
+              "anomalies_detected": 100,
+              "rules_generated": 100,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_B",
+            "samples": 100,
+            "metrics": {
+              "loss": 1.0,
+              "anomalies_detected": 0,
+              "rules_generated": 0,
+              "packets_processed": 100
+            }
+          },
+          {
+            "cid": "client_C",
+            "samples": 100,
+            "metrics": {
+              "loss": 0.0,
+              "anomalies_detected": 100,
+              "rules_generated": 100,
+              "packets_processed": 100
+            }
+          }
+        ],
+        "global_rules": [
+          {
+            "rule_string": "alert tcp 192.168.1.100 any -> any any (msg:\"PORT_SCAN_DETECTED\"; sid:1001;)",
+            "anomaly_type": "port_scan",
+            "supporting_clients": [
+              "client_A",
+              "client_A"
+            ],
+            "promotion_time": 2
+          }
+        ],
+        "consensus_stats": {
+          "rules_submitted": 900,
+          "rules_promoted": 1
+        }
+      }
+    ],
+    "final_global_rules": [
+      {
+        "rule_string": "alert tcp 192.168.1.100 any -> any any (msg:\"PORT_SCAN_DETECTED\"; sid:1001;)",
+        "anomaly_type": "port_scan",
+        "supporting_clients": [
+          "client_A",
+          "client_A"
+        ],
+        "promotion_time": 2
+      }
+    ],
+    "scenario": "iid",
+    "timestamp": "2026-03-01T00:12:44.032013"
+  }
+}

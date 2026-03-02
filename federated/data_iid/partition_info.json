@@ -1,0 +1,9 @@
+{
+  "generated_at": "2026-02-28T23:27:28.697907",
+  "partitions": {
+    "client_A": "federated/data_iid/client_A_packets.json",
+    "client_B": "federated/data_iid/client_B_packets.json",
+    "client_C": "federated/data_iid/client_C_packets.json"
+  },
+  "scenario": "IID (same attack distribution)"
+}

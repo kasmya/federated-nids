@@ -1,0 +1,4 @@
+# Federated NIDS Research Dependencies
+numpy>=1.21.0
+flwr>=1.0.0
+matplotlib>=3.5.0

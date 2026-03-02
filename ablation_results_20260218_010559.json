@@ -1,0 +1,79 @@
+{
+  "timestamp": "2026-02-18T01:05:59.779363",
+  "total_packets": 470,
+  "attack_packets": 170,
+  "results": [
+    {
+      "name": "FULL SYSTEM (All Layers + Adaptive)",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "LAYER 2 ONLY (Static Thresholds)",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "FIXED CONSERVATIVE THRESHOLDS",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "SENSITIVE THRESHOLDS (Lower = More Detection)",
+      "alerts": 8,
+      "metrics": {
+        "tp": 130,
+        "fp": 124,
+        "fn": 40,
+        "precision": 0.5118110236220472,
+        "recall": 0.7647058823529411,
+        "f1": 0.6132075471698113
+      }
+    },
+    {
+      "name": "PORT SCAN DETECTION ONLY",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    },
+    {
+      "name": "SYN FLOOD DETECTION ONLY",
+      "alerts": 1,
+      "metrics": {
+        "tp": 130,
+        "fp": 0,
+        "fn": 40,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666666
+      }
+    }
+  ]
+}

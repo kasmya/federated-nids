@@ -281,7 +281,7 @@ def check_packet_rules(pkt):
         dst = pkt['IP'].dst
         proto = proto_name_by_num(pkt['IP'].proto)
         sport = getattr(pkt['IP'], 'sport', 0)
-        dport = getattr(pkt['IP'].dport', 0)
+        dport = getattr(pkt['IP'], 'dport', 0)
     except Exception as e:
         return None
     
@@ -578,22 +578,54 @@ def process_packet(pkt):
     """Process each captured packet"""
     if not capture_state.running:
         return
-    
+
     # Add to packet list
     capture_state.add_packet(pkt)
-    
+
     # Generate summary
     try:
         summary = pkt.summary()
     except:
         summary = str(pkt)
-    
+
     # Get protocol for stats
     if 'IP' in pkt:
         proto = proto_name_by_num(pkt['IP'].proto)
         with capture_state._lock:
             capture_state.protocol_stats[proto] += 1
-    
+        
+        # === CLOSED LOOP: Anomaly Detection ===
+        if anomaly_detector and anomaly_detector.enabled:
+            try:
+                # Build packet dict for anomaly detector
+                pkt_dict = {
+                    'src': pkt['IP'].src,
+                    'dst': pkt['IP'].dst,
+                    'proto': proto,
+                    'sport': getattr(pkt['IP'], 'sport', 0),
+                    'dport': getattr(pkt['IP'], 'dport', 0),
+                    'flags': '',
+                    'length': len(pkt)
+                }
+                
+                # Add TCP flags if available
+                if 'TCP' in pkt:
+                    flags = pkt['TCP'].flags
+                    pkt_dict['flags'] = str(flags)
+                    pkt_dict['length'] = len(pkt)
+                
+                # Process through anomaly detector
+                anomaly = anomaly_detector.process_packet(pkt_dict)
+                
+                # If anomaly detected, emit it
+                if anomaly:
+                    anomaly_data = anomaly.to_dict()
+                    socketio.emit('new_anomaly', anomaly_data)
+                    
+            except Exception as e:
+                logger.debug(f"Anomaly detection error: {e}")
+        # === END CLOSED LOOP ===
+
     # Check rules
     rule_match = check_packet_rules(pkt)
     
@@ -720,6 +752,29 @@ def api_status():
     """Get current capture status"""
     return jsonify(capture_state.get_summary())
 
+@app.route('/api/protocols')
+def api_protocols():
+    """Get protocol statistics"""
+    return jsonify({'protocols': dict(capture_state.protocol_stats)})
+
+@app.route('/api/packets')
+def api_packets():
+    """Get recent packets"""
+    with capture_state._lock:
+        packets = []
+        for pkt in list(capture_state.pkt_list)[-50:]:
+            try:
+                if 'IP' in pkt:
+                    packets.append({
+                        'src': pkt['IP'].src,
+                        'dst': pkt['IP'].dst,
+                        'proto': proto_name_by_num(pkt['IP'].proto),
+                        'len': len(pkt)
+                    })
+            except:
+                pass
+        return jsonify({'packets': packets})
+
 @app.route('/api/alerts')
 def api_alerts():
     """Get all alerts"""
@@ -802,6 +857,102 @@ def api_http_objects():
     objects = read_http_objects()
     return jsonify({'objects': objects})
 
+# ============== CLOSED LOOP / ANOMALY DETECTION ==============
+# Initialize closed-loop components
+anomaly_detector = None
+closed_loop_initialized = False
+
+def init_closed_loop():
+    """Initialize closed-loop anomaly detection"""
+    global anomaly_detector, closed_loop_initialized
+    if closed_loop_initialized:
+        return
+    try:
+        from closed_loop.anomaly_detector import create_anomaly_detector
+        anomaly_detector = create_anomaly_detector({'window_size': 10, 'threshold': 0.5})
+        logger.info("Closed-loop anomaly detector initialized")
+        closed_loop_initialized = True
+    except Exception as e:
+        logger.warning(f"Could not initialize anomaly detector: {e}")
+        anomaly_detector = None
+
+# Initialize on module load
+init_closed_loop()
+
+@app.route('/api/closed-loop/status')
+def api_closed_loop_status():
+    """Get closed-loop detection status"""
+    if anomaly_detector is None:
+        # Initialize if not done
+        init_closed_loop()
+    
+    if anomaly_detector:
+        stats = anomaly_detector.get_statistics()
+        return jsonify({
+            'enabled': anomaly_detector.enabled,
+            'stats': stats,
+            'active_anomalies': anomaly_detector.get_active_anomalies()
+        })
+    return jsonify({'enabled': False, 'error': 'Anomaly detector not available'})
+
+@app.route('/api/closed-loop/anomalies')
+def api_closed_loop_anomalies():
+    """Get recent anomalies from closed-loop detection"""
+    if anomaly_detector:
+        return jsonify({
+            'anomalies': anomaly_detector.get_recent_anomalies(50)
+        })
+    return jsonify({'anomalies': []})
+
+@app.route('/api/closed-loop/config', methods=['POST'])
+def api_closed_loop_config():
+    """Configure closed-loop detection settings"""
+    if anomaly_detector is None:
+        init_closed_loop()
+    
+    if anomaly_detector:
+        data = request.json or {}
+        
+        # Handle auto_generate_rules toggle (learning toggle)
+        if 'auto_generate_rules' in data:
+            if data['auto_generate_rules']:
+                anomaly_detector.enable()
+            else:
+                anomaly_detector.disable()
+        
+        # Handle threshold adjustment
+        if 'threshold' in data:
+            anomaly_detector.detection_threshold = float(data['threshold'])
+        
+        # Handle window size adjustment
+        if 'window_size' in data:
+            anomaly_detector.window_size = int(data['window_size'])
+        
+        return jsonify({
+            'enabled': anomaly_detector.enabled,
+            'threshold': anomaly_detector.detection_threshold,
+            'window_size': anomaly_detector.window_size
+        })
+    return jsonify({'enabled': False, 'error': 'Anomaly detector not available'})
+
+# ============== YARA STATUS ==============
+@app.route('/api/yara/status')
+def api_yara_status():
+    """Get YARA scanner status"""
+    try:
+        import yara
+        yara_available = True
+    except ImportError:
+        yara_available = False
+    
+    rules_loaded = os.path.exists(YARA_RULES_FILE) if yara_available else False
+    
+    return jsonify({
+        'available': yara_available,
+        'rules_loaded': rules_loaded,
+        'rules_file': YARA_RULES_FILE
+    })
+
 @app.route('/saved_pcap/<path:filename>')
 def download_pcap(filename):
     """Download saved PCAP file"""
@@ -813,6 +964,373 @@ def download_pcap(filename):
             mimetype='application/octet-stream'
         )
     return jsonify({'error': 'File not found'}), 404
+
+# ============== FEDERATION STATE ==============
+federation_state = {
+    'is_running': False,
+    'current_round': 0,
+    'total_rounds': 0,
+    'clients': {},
+    'global_rules': [],
+    'results': {},
+    'last_update': None,
+    'logs': []
+}
+
+# ============== FEDERATION ENDPOINTS ==============
+@app.route('/api/federation/status')
+def federation_status():
+    """Get federated learning status"""
+    return jsonify(federation_state)
+
+@app.route('/api/federation/start', methods=['POST'])
+def federation_start():
+    """Start federated learning session"""
+    data = request.json or {}
+    num_rounds = data.get('num_rounds', 3)
+    scenario = data.get('scenario', 'non_iid')
+    
+    # Use lowercase keys to match frontend expectations
+    federation_state['is_running'] = True
+    federation_state['total_rounds'] = num_rounds
+    federation_state['current_round'] = 0
+    federation_state['clients'] = {
+        'client_a': {'status': 'ready', 'pattern': 'port_scan', 'packets': 0, 'anomalies': 0, 'rules': 0},
+        'client_b': {'status': 'ready', 'pattern': 'syn_flood', 'packets': 0, 'anomalies': 0, 'rules': 0},
+        'client_c': {'status': 'ready', 'pattern': 'mixed', 'packets': 0, 'anomalies': 0, 'rules': 0}
+    }
+    federation_state['last_update'] = datetime.now().isoformat()
+    
+    # Run federation in background with demo simulation only
+    def run_federation():
+        try:
+            # Always use demo simulation for the dashboard
+            logger.info("Starting federation simulation...")
+            
+            for round_num in range(1, num_rounds + 1):
+                if not federation_state['is_running']:
+                    break
+                federation_state['current_round'] = round_num
+                
+                # Simulate client data for each round
+                for client_id in ['client_a', 'client_b', 'client_c']:
+                    federation_state['clients'][client_id]['packets'] = 500 + (round_num * 100)
+                    federation_state['clients'][client_id]['anomalies'] = round_num * 3
+                    federation_state['clients'][client_id]['rules'] = round_num * 2
+                
+                # Add some global rules after first round
+                if round_num >= 1:
+                    federation_state['global_rules'] = [
+                        f"alert tcp any any -> 10.0.0.0/24 any (msg:'Global SYN Flood Rule R{round_num}'; flags:S; sid:100{round_num}01; rev:1;)",
+                        f"alert tcp any any -> 10.0.0.0/24 any (msg:'Global Port Scan Rule R{round_num}'; sid:100{round_num}02; rev:1;)",
+                        f"alert udp any any -> 10.0.0.0/24 53 (msg:'Global DNS Amp Rule R{round_num}'; sid:100{round_num}03; rev:1;)",
+                    ]
+                
+                logger.info(f"Federation round {round_num}/{num_rounds} completed")
+                
+                # Emit update via socket
+                socketio.emit('packet_update', {
+                    'packet_count': capture_state.packet_count,
+                    'alert_count': capture_state.alert_count,
+                    'protocol_stats': dict(capture_state.protocol_stats)
+                })
+                
+                time.sleep(1.5)  # Simulate round time
+                
+            federation_state['results'] = {
+                'rounds_completed': federation_state['current_round'],
+                'scenario': scenario,
+                'final_global_rules': federation_state['global_rules']
+            }
+                    
+        except Exception as e:
+            logger.error(f"Federation error: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            federation_state['is_running'] = False
+            federation_state['current_round'] = 0
+    
+    thread = threading.Thread(target=run_federation, daemon=True)
+    thread.start()
+    
+    return jsonify({'status': 'started', 'num_rounds': num_rounds, 'scenario': scenario})
+
+@app.route('/api/federation/stop', methods=['POST'])
+def federation_stop():
+    """Stop federated learning"""
+    federation_state['is_running'] = False
+    return jsonify({'status': 'stopped'})
+
+@app.route('/api/federation/results')
+def federation_results():
+    """Get federation results"""
+    return jsonify(federation_state.get('results', {}))
+
+@app.route('/api/federation/scenarios')
+def federation_scenarios():
+    """Get available scenarios"""
+    return jsonify({
+        'scenarios': ['iid', 'non_iid', 'zero_day'],
+        'descriptions': {
+            'iid': 'Independent and Identically Distributed - All clients see same attack patterns',
+            'non_iid': 'Non-IID - Different clients see different attack patterns',
+            'zero_day': 'Zero-Day - New attack type introduced mid-training'
+        }
+    })
+
+@app.route('/api/federation/global-rules')
+def federation_global_rules():
+    """Get global rules from consensus"""
+    return jsonify({'global_rules': federation_state.get('global_rules', [])})
+
+# ============== DEMO/SIMULATION MODE ==============
+import random
+
+demo_state = {
+    'running': False,
+    'packets_generated': 0,
+    'mode': 'mixed'  # normal, port_scan, syn_flood, ddos, icmp_flood, mixed
+}
+
+def generate_demo_packet(mode='normal'):
+    """Generate a synthetic packet for demo mode"""
+    # Common source IPs for demo
+    src_ips = ['192.168.1.100', '192.168.1.101', '10.0.0.50', '172.16.0.10']
+    dst_ips = ['10.0.0.1', '10.0.0.2', '10.0.0.3', '10.0.0.4', '10.0.0.5']
+    protocols = ['tcp', 'udp', 'icmp']
+    common_ports = [80, 443, 22, 53, 8080, 3306, 21]
+    
+    if mode == 'port_scan':
+        # Simulate port scan - many ports from same IP
+        src_ip = '192.168.1.200'
+        dst_ip = random.choice(['10.0.0.10', '10.0.0.20', '10.0.0.30'])
+        dport = random.randint(1, 1024)  # Scanning many ports
+        proto = 'tcp'
+        flags = 'S'
+    elif mode == 'syn_flood':
+        # Simulate SYN flood - high rate from same IP
+        src_ip = random.choice(['192.168.1.250', '10.10.10.5'])
+        dst_ip = '10.0.0.1'
+        dport = 80
+        proto = 'tcp'
+        flags = 'S'
+    elif mode == 'ddos':
+        # Simulate DDoS - many source IPs hitting same target
+        src_ip = f'10.100.{random.randint(1,255)}.{random.randint(1,255)}'
+        dst_ip = '10.0.0.1'
+        dport = 80
+        proto = 'tcp'
+        flags = 'S'
+    elif mode == 'icmp_flood':
+        # Simulate ICMP flood
+        src_ip = '192.168.1.180'
+        dst_ip = '10.0.0.1'
+        dport = 0
+        proto = 'icmp'
+        flags = ''
+    else:
+        # Normal traffic
+        src_ip = random.choice(src_ips)
+        dst_ip = random.choice(dst_ips)
+        dport = random.choice(common_ports)
+        proto = random.choice(protocols)
+        flags = 'S' if proto == 'tcp' and random.random() > 0.5 else 'A'
+    
+    return {
+        'src': src_ip,
+        'dst': dst_ip,
+        'proto': proto,
+        'sport': random.randint(1024, 65535),
+        'dport': dport,
+        'flags': flags,
+        'length': random.randint(64, 1500)
+    }
+
+def run_demo_simulation():
+    """Background thread for demo simulation"""
+    global demo_state
+    
+    # Set capture state to running so packets get processed
+    capture_state.running = True
+    capture_state.start_time = datetime.now()
+    
+    while demo_state['running']:
+        try:
+            # Generate packet based on mode
+            mode = demo_state['mode']
+            if mode == 'mixed':
+                # Randomly choose attack type
+                rand_val = random.random()
+                if rand_val < 0.7:
+                    mode = 'normal'
+                elif rand_val < 0.85:
+                    mode = 'port_scan'
+                elif rand_val < 0.95:
+                    mode = 'syn_flood'
+                else:
+                    mode = random.choice(['ddos', 'icmp_flood'])
+            
+            pkt_dict = generate_demo_packet(mode)
+            
+            # Create a mock scapy packet-like object for processing
+            class MockPacket:
+                def __init__(self, d):
+                    self.data = d
+                    self.src = d.get('src', '')
+                    self.dst = d.get('dst', '')
+                    self.sport = d.get('sport', 0)
+                    self.dport = d.get('dport', 0)
+                    self.len = d.get('length', 64)
+                    
+                    # Set protocol as NAME (will be converted to number by proto property)
+                    self._proto_name = d.get('proto', 'tcp')
+                    
+                    # Protocol number mapping (for scapy compatibility)
+                    self._proto_num = {
+                        'tcp': 6,
+                        'udp': 17, 
+                        'icmp': 1,
+                        'arp': 28,
+                        'dns': 17  # DNS uses UDP
+                    }.get(self._proto_name.lower(), 0)
+                
+                @property
+                def proto(self):
+                    """Return protocol NUMBER for process_packet function"""
+                    return self._proto_num
+                    
+                def summary(self):
+                    return f"{self._proto_name.upper()} {self.data['src']}:{self.data['sport']} -> {self.data['dst']}:{self.data['dport']}"
+                
+                def __getitem__(self, key):
+                    if key == 'IP':
+                        return self
+                    if key == 'TCP' and self._proto_name.lower() == 'tcp':
+                        return self
+                    if key == 'UDP' and self._proto_name.lower() == 'udp':
+                        return self
+                    if key == 'ICMP' and self._proto_name.lower() == 'icmp':
+                        return self
+                    raise KeyError(key)
+                
+                def __contains__(self, key):
+                    if key == 'IP':
+                        return True
+                    if key == 'TCP' and self._proto_name.lower() == 'tcp':
+                        return True
+                    if key == 'UDP' and self._proto_name.lower() == 'udp':
+                        return True
+                    if key == 'ICMP' and self._proto_name.lower() == 'icmp':
+                        return True
+                    return False
+                
+                def __len__(self):
+                    return self.len
+            
+            mock_pkt = MockPacket(pkt_dict)
+            
+            # Process packet through the main processing function
+            # This will add it to capture_state.pkt_list and check rules
+            process_packet(mock_pkt)
+            
+            # Also process through anomaly detector directly
+            if anomaly_detector and anomaly_detector.enabled:
+                anomaly = anomaly_detector.process_packet(pkt_dict)
+                if anomaly:
+                    # Emit via WebSocket
+                    socketio.emit('new_anomaly', anomaly.to_dict())
+            
+            demo_state['packets_generated'] += 1
+            
+            # Update protocol stats
+            with capture_state._lock:
+                capture_state.protocol_stats[pkt_dict['proto']] += 1
+            
+            # Emit packet update every 5 packets
+            if demo_state['packets_generated'] % 5 == 0:
+                socketio.emit('packet_update', {
+                    'packet_count': capture_state.packet_count,
+                    'alert_count': capture_state.alert_count,
+                    'protocol_stats': dict(capture_state.protocol_stats)
+                })
+            
+            # Occasionally trigger an alert for attack patterns
+            if mode != 'normal' and random.random() < 0.15:
+                alert = {
+                    'id': capture_state.alert_count + 1,
+                    'timestamp': datetime.now().isoformat(),
+                    'summary': f"DETECTED: {mode.upper()} attack pattern",
+                    'message': f'Suspicious {mode.replace("_", " ").title()} traffic detected',
+                    'src': pkt_dict['src'],
+                    'dst': pkt_dict['dst'],
+                    'proto': pkt_dict['proto'],
+                    'sport': pkt_dict['sport'],
+                    'dport': pkt_dict['dport'],
+                    'payload': ''
+                }
+                capture_state.add_alert(alert, '')
+                socketio.emit('new_alert', alert)
+            
+            # Sleep briefly for simulation speed
+            time.sleep(0.15)
+            
+        except Exception as e:
+            logger.error(f"Demo simulation error: {e}")
+            import traceback
+            traceback.print_exc()
+            time.sleep(1)
+    
+    # Reset capture state when demo stops
+    capture_state.running = False
+
+# Demo mode endpoints
+@app.route('/api/demo/start', methods=['POST'])
+def api_demo_start():
+    """Start demo mode with synthetic traffic"""
+    global demo_state
+    
+    if demo_state['running']:
+        return jsonify({'status': 'already_running'})
+    
+    data = request.json or {}
+    mode = data.get('mode', 'mixed')
+    
+    demo_state['running'] = True
+    demo_state['mode'] = mode
+    demo_state['packets_generated'] = 0
+    
+    # Start simulation in background
+    thread = threading.Thread(target=run_demo_simulation, daemon=True)
+    thread.start()
+    
+    logger.info(f"Demo mode started: {mode}")
+    return jsonify({'status': 'started', 'mode': mode})
+
+@app.route('/api/demo/stop', methods=['POST'])
+def api_demo_stop():
+    """Stop demo mode"""
+    global demo_state
+    demo_state['running'] = False
+    logger.info("Demo mode stopped")
+    return jsonify({'status': 'stopped', 'packets_generated': demo_state['packets_generated']})
+
+@app.route('/api/demo/status')
+def api_demo_status():
+    """Get demo mode status"""
+    return jsonify({
+        'running': demo_state['running'],
+        'mode': demo_state['mode'],
+        'packets_generated': demo_state['packets_generated']
+    })
+
+@app.route('/api/demo/set_mode', methods=['POST'])
+def api_demo_set_mode():
+    """Set demo mode type"""
+    data = request.json or {}
+    mode = data.get('mode', 'mixed')
+    demo_state['mode'] = mode
+    return jsonify({'status': 'ok', 'mode': mode})
 
 # ============== SOCKET EVENTS ==============
 @socketio.on('connect')

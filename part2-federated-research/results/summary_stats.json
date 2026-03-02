@@ -1,0 +1,80 @@
+{
+  "iid": {
+    "num_rounds": 10,
+    "total_global_rules": 2,
+    "rounds_until_first_global": 1,
+    "total_rules_generated": 4393,
+    "average_detection_accuracy": 0.9947222222222222,
+    "rounds_with_global_rule": 2,
+    "client_stats": {
+      "client_A": {
+        "total_rules": 1467,
+        "total_detections": 1467,
+        "avg_accuracy": 1.0
+      },
+      "client_B": {
+        "total_rules": 1478,
+        "total_detections": 1478,
+        "avg_accuracy": 1.0
+      },
+      "client_C": {
+        "total_rules": 1448,
+        "total_detections": 1448,
+        "avg_accuracy": 0.9841666666666666
+      }
+    },
+    "timestamp": "2026-03-02T15:26:37.134993"
+  },
+  "non_iid": {
+    "num_rounds": 15,
+    "total_global_rules": 2,
+    "rounds_until_first_global": 1,
+    "total_rules_generated": 4820,
+    "average_detection_accuracy": 0.7481944444444445,
+    "rounds_with_global_rule": 2,
+    "client_stats": {
+      "client_A": {
+        "total_rules": 2138,
+        "total_detections": 2138,
+        "avg_accuracy": 0.8670833333333333
+      },
+      "client_B": {
+        "total_rules": 2452,
+        "total_detections": 2452,
+        "avg_accuracy": 0.9975
+      },
+      "client_C": {
+        "total_rules": 230,
+        "total_detections": 230,
+        "avg_accuracy": 0.38
+      }
+    },
+    "timestamp": "2026-03-02T15:26:57.165599"
+  },
+  "zero_day": {
+    "num_rounds": 15,
+    "total_global_rules": 3,
+    "rounds_until_first_global": 1,
+    "total_rules_generated": 4796,
+    "average_detection_accuracy": 0.7438888888888889,
+    "rounds_with_global_rule": 3,
+    "client_stats": {
+      "client_A": {
+        "total_rules": 2114,
+        "total_detections": 2114,
+        "avg_accuracy": 0.8541666666666666
+      },
+      "client_B": {
+        "total_rules": 2452,
+        "total_detections": 2452,
+        "avg_accuracy": 0.9975
+      },
+      "client_C": {
+        "total_rules": 230,
+        "total_detections": 230,
+        "avg_accuracy": 0.38
+      }
+    },
+    "timestamp": "2026-03-02T15:27:26.888880"
+  }
+}

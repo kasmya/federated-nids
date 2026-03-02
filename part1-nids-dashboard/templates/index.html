@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hybrid NIDS Dashboard - Network Intrusion Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Matrix Rain Background -->
+    <canvas id="matrix" class="matrix-rain"></canvas>
+    
+    <!-- Main Dashboard -->
+    <div class="dashboard">
+        <!-- Header -->
+        <header class="header">
+                <div class="logo">
+                <span class="logo-icon">◉</span>
+                <h1>HYBRID <span class="highlight">NIDS</span> DASHBOARD</h1>
+                <button id="info-btn" class="info-btn" title="Help">ⓘ</button>
+            </div>
+            
+            <div class="header-stats">
+                <div class="stat-box">
+                    <span class="stat-label">PACKETS</span>
+                    <span class="stat-value" id="packet-count">0</span>
+                </div>
+                <div class="stat-box alert">
+                    <span class="stat-label">ALERTS</span>
+                    <span class="stat-value" id="alert-count">0</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">STATUS</span>
+                    <span class="stat-value" id="capture-status">IDLE</span>
+                </div>
+            </div>
+            
+            <div class="header-time">
+                <span id="current-time">--:--:--</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Panel - Controls -->
+            <aside class="control-panel">
+                <div class="panel-section">
+                    <h3>◈ INTERFACE</h3>
+                    <select id="interface-select" class="cyber-select">
+                        <option value="">Detecting interfaces...</option>
+                    </select>
+                </div>
+
+                <div class="panel-section">
+                    <h3>◈ CAPTURE CONTROL</h3>
+                    <div class="button-group">
+                        <button id="start-btn" class="cyber-btn start">
+                            <span class="btn-icon">▶</span> START
+                        </button>
+                        <button id="stop-btn" class="cyber-btn stop" disabled>
+                            <span class="btn-icon">⏹</span> STOP
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>◈ ACTIONS</h3>
+                    <div class="button-group vertical">
+                        <button id="refresh-rules-btn" class="cyber-btn">
+                            <span class="btn-icon">↻</span> REFRESH RULES
+                        </button>
+                        <button id="load-pcap-btn" class="cyber-btn">
+                            <span class="btn-icon">📂</span> LOAD PCAP
+                        </button>
+                        <button id="save-json-btn" class="cyber-btn">
+                            <span class="btn-icon">📥</span> EXPORT JSON
+                        </button>
+                        <button id="save-pcap-btn" class="cyber-btn">
+                            <span class="btn-icon">💾</span> SAVE PCAP
+                        </button>
+                    </div>
+                    <input type="file" id="pcap-upload" accept=".pcap,.pcapng" style="display: none;">
+                </div>
+
+                <div class="panel-section">
+                    <h3>◈ ACTIVE RULES</h3>
+                    <div id="rules-list" class="rules-container">
+                        <p class="empty-text">Loading rules...</p>
+                    </div>
+                </div>
+
+                <!-- NEW: Closed-Loop Auto-Learning Panel -->
+                <div class="panel-section closed-loop-panel">
+                    <h3>◈ THREE-LAYER DEFENSE <span class="status-indicator" id="learning-status">● ACTIVE</span></h3>
+                    
+                    <!-- Three Layer Badges with Descriptions -->
+                    <div class="layer-indicators">
+                        <div class="layer-badge layer-1" title="Layer 1 - REFLEX: Signature detection using Snort rules & YARA for instant detection of known threats">
+                            <span class="layer-icon">🛡️</span>
+                            <span class="layer-num">L1</span>
+                            <span class="layer-name">REFLEX</span>
+                        </div>
+                        <div class="layer-badge layer-2" title="Layer 2 - BRAIN: ML-based anomaly detection using statistical analysis to identify unknown attacks">
+                            <span class="layer-icon">🧠</span>
+                            <span class="layer-num">L2</span>
+                            <span class="layer-name">BRAIN</span>
+                        </div>
+                        <div class="layer-badge layer-3" title="Layer 3 - TEACHER: Auto-generates new detection rules from ML findings, teaching L1 for faster detection">
+                            <span class="layer-icon">📚</span>
+                            <span class="layer-num">L3</span>
+                            <span class="layer-name">TEACHER</span>
+                        </div>
+                    </div>
+                    
+                    <div class="learning-stats">
+                        <div class="mini-stat">
+                            <span class="mini-label">ML Anomalies</span>
+                            <span class="mini-value" id="cl-anomalies">0</span>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-label">Rules Gen</span>
+                            <span class="mini-value" id="cl-rules-generated">0</span>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-label">Active IPs</span>
+                            <span class="mini-value" id="cl-tracked-ips">0</span>
+                        </div>
+                    </div>
+                    <div class="button-group vertical">
+                        <button id="toggle-learning-btn" class="cyber-btn toggle">
+                            <span class="btn-icon">⏸</span> PAUSE LEARNING
+                        </button>
+                        <button id="view-anomalies-btn" class="cyber-btn">
+                            <span class="btn-icon">⚡</span> VIEW ANOMALIES
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>◈ YARA MALWARE SCANNER</h3>
+                    <div id="yara-results" class="yara-container">
+                        <div class="yara-status">
+                            <span class="yara-dot"></span>
+                            <span>YARA Active - Scanning payloads</span>
+                        </div>
+                        <div id="yara-matches"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center Panel - Traffic & Alerts -->
+            <section class="traffic-panel">
+                <div class="tabs">
+                    <button class="tab active" data-tab="alerts">SECURITY ALERTS</button>
+                    <button class="tab" data-tab="traffic">ALL TRAFFIC</button>
+                    <button class="tab" data-tab="anomalies">ANOMALIES</button>
+                    <button class="tab" data-tab="federation">FEDERATION</button>
+                </div>
+
+                <div class="tab-content active" id="alerts-tab">
+                    <div class="tab-toolbar">
+                        <select id="alerts-sort" class="cyber-sort">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="severity">By Severity</option>
+                            <option value="source">By Source IP</option>
+                        </select>
+                    </div>
+                    <div class="alerts-container" id="alerts-container">
+                        <p class="empty-text">No security alerts detected</p>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="traffic-tab">
+                    <div class="tab-toolbar">
+                        <select id="traffic-sort" class="cyber-sort">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="src-ip">By Source IP</option>
+                            <option value="dst-ip">By Dest IP</option>
+                            <option value="protocol">By Protocol</option>
+                            <option value="port">By Port</option>
+                        </select>
+                    </div>
+                    <div class="data-table-container">
+                        <table class="cyber-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Time</th>
+                                    <th>Source</th>
+                                    <th>Destination</th>
+                                    <th>Protocol</th>
+                                    <th>Info</th>
+                                </tr>
+                            </thead>
+                            <tbody id="traffic-table-body">
+                                <tr>
+                                    <td colspan="6" class="empty-text">No packets captured yet - Start capture to see traffic</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="anomalies-tab">
+                    <div class="tab-toolbar">
+                        <select id="anomalies-sort" class="cyber-sort">
+                            <option value="score">By Score (High)</option>
+                            <option value="score-low">By Score (Low)</option>
+                            <option value="type">By Type</option>
+                            <option value="source">By Source IP</option>
+                        </select>
+                    </div>
+                    <div class="anomalies-container" id="anomalies-container">
+                        <p class="empty-text">No anomalies detected - Auto-learning is active</p>
+                    </div>
+                </div>
+
+                <!-- FEDERATION TAB -->
+                <div class="tab-content" id="federation-tab">
+                    <div class="tab-toolbar">
+                        <select id="federation-scenario" class="cyber-sort">
+                            <option value="iid">IID Scenario</option>
+                            <option value="non_iid">Non-IID Scenario</option>
+                            <option value="zero_day">Zero-Day Scenario</option>
+                        </select>
+                        <button id="run-federation-btn" class="cyber-btn">
+                            <span class="btn-icon">▶</span> RUN EXPERIMENT
+                        </button>
+                        <button id="refresh-federation-btn" class="cyber-btn">
+                            <span class="btn-icon">↻</span> REFRESH
+                        </button>
+                    </div>
+                    
+                    <!-- Federation Status -->
+                    <div class="federation-status" id="federation-status">
+                        <div class="fed-overview">
+                            <div class="fed-stat-box">
+                                <span class="fed-stat-label">SCENARIO</span>
+                                <span class="fed-stat-value" id="fed-scenario-name">IID</span>
+                            </div>
+                            <div class="fed-stat-box">
+                                <span class="fed-stat-label">ROUNDS</span>
+                                <span class="fed-stat-value" id="fed-rounds">10</span>
+                            </div>
+                            <div class="fed-stat-box">
+                                <span class="fed-stat-label">GLOBAL RULES</span>
+                                <span class="fed-stat-value" id="fed-global-rules">2</span>
+                            </div>
+                            <div class="fed-stat-box alert">
+                                <span class="fed-stat-label">AVG ACCURACY</span>
+                                <span class="fed-stat-value" id="fed-accuracy">100%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Client Cards -->
+                    <div class="fed-clients" id="fed-clients">
+                        <div class="fed-client-card" data-client="client_A">
+                            <div class="client-header">
+                                <span class="client-icon">◉</span>
+                                <span class="client-name">Client A</span>
+                                <span class="client-focus">Port Scan Focus</span>
+                            </div>
+                            <div class="client-stats">
+                                <div class="mini-stat">
+                                    <span class="mini-label">Rules</span>
+                                    <span class="mini-value" id="client_A-rules">1200</span>
+                                </div>
+                                <div class="mini-stat">
+                                    <span class="mini-label">Accuracy</span>
+                                    <span class="mini-value" id="client_A-accuracy">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fed-client-card" data-client="client_B">
+                            <div class="client-header">
+                                <span class="client-icon">◉</span>
+                                <span class="client-name">Client B</span>
+                                <span class="client-focus">SYN Flood Focus</span>
+                            </div>
+                            <div class="client-stats">
+                                <div class="mini-stat">
+                                    <span class="mini-label">Rules</span>
+                                    <span class="mini-value" id="client_B-rules">1200</span>
+                                </div>
+                                <div class="mini-stat">
+                                    <span class="mini-label">Accuracy</span>
+                                    <span class="mini-value" id="client_B-accuracy">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="fed-client-card" data-client="client_C">
+                            <div class="client-header">
+                                <span class="client-icon">◉</span>
+                                <span class="client-name">Client C</span>
+                                <span class="client-focus">Mixed Traffic</span>
+                            </div>
+                            <div class="client-stats">
+                                <div class="mini-stat">
+                                    <span class="mini-label">Rules</span>
+                                    <span class="mini-value" id="client_C-rules">1200</span>
+                                </div>
+                                <div class="mini-stat">
+                                    <span class="mini-label">Accuracy</span>
+                                    <span class="mini-value" id="client_C-accuracy">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Global Rules Section -->
+                    <div class="fed-global-rules">
+                        <h4>◈ GLOBAL RULES (Consensus)</h4>
+                        <div class="rules-container" id="fed-global-rules-list">
+                            <p class="empty-text">Loading global rules...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Round Progress -->
+                    <div class="fed-progress">
+                        <h4>◈ ROUND PROGRESS</h4>
+                        <div class="progress-bars" id="fed-progress-bars">
+                            <p class="empty-text">Select a scenario to view progress</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel - Analysis -->
+            <aside class="analysis-panel">
+                <div class="panel-section">
+                    <h3>◈ PACKET ANALYSIS</h3>
+                    <div id="packet-analysis" class="analysis-content">
+                        <p class="empty-text">Select a packet or alert to analyze</p>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3>◈ PROTOCOL DISTRIBUTION</h3>
+                    <div id="protocol-stats" class="mini-chart">
+                        <div id="protocol-stats-content">
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>◈ VISUALISATION</h4>
+                        <canvas id="protocol-chart"></canvas>
+                    </div>
+                        <div id="protocol-stats-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <span>NIDS Dashboard v1.0</span>
+            <span>|</span>
+            <span id="connection-status" class="status connected">● CONNECTED</span>
+            <span>|</span>
+            <span>Scapy + Flask</span>
+        </footer>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="info-modal" class="info-modal">
+        <div class="info-modal-content">
+            <div class="info-modal-header">
+                <h3>◈ HYBRID NIDS - CLOSED-LOOP SYSTEM</h3>
+                <button class="info-modal-close" id="info-modal-close">&times;</button>
+            </div>
+            <div class="info-modal-body">
+                <div class="info-section">
+                    <h4>THREE-LAYER ARCHITECTURE</h4>
+                    <p>This Hybrid NIDS uses a closed-loop architecture with continuous learning:</p>
+                    <ul>
+                        <li><strong>Layer 1 - The Reflex:</strong> High-speed rule-based detection using YARA and Snort-style signatures. Catches known attacks instantly.</li>
+                        <li><strong>Layer 2 - The Brain:</strong> ML-based anomaly detection using statistical analysis. Detects new/unknown attacks by analyzing behavior patterns.</li>
+                        <li><strong>Layer 3 - The Teacher:</strong> Learning engine that automatically creates new rules from ML detections, closing the loop for continuous improvement.</li>
+                    </ul>
+                </div>
+
+                <div class="info-section">
+                    <h4>HOW ML IS UTILIZED</h4>
+                    <p>The system uses <strong>statistical ML</strong> for real-time anomaly detection:</p>
+                    <ul>
+                        <li><strong>Feature Extraction:</strong> Extracts 13 features per IP (packet rate, port diversity, connection rate, etc.)</li>
+                        <li><strong>Anomaly Scoring:</strong> Uses threshold-based scoring to identify suspicious patterns</li>
+                        <li><strong>Attack Types Detected:</strong> Port scans, SYN floods, DDoS, DNS amplification, ICMP floods</li>
+                        <li><strong>Why Statistical ML:</strong> Lightweight, real-time, no training required - ideal for network security</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <h4>HOW IT WORKS</h4>
+                    <p>The Closed-Loop Detection Process:</p>
+                    <ul>
+                        <li><strong>Traffic arrives:</strong> Packet is checked by Layer 1 (rules)</li>
+                        <li><strong>If known:</strong> Blocked immediately (fast path)</li>
+                        <li><strong>If unknown:</strong> Sent to Layer 2 (ML analysis)</li>
+                        <li><strong>If suspicious:</strong> Layer 3 auto-generates a new rule</li>
+                        <li><strong>Rule deployed:</strong> Added to Layer 1 for faster detection next time</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <h4>DETECTION RULES</h4>
+                    <p>Rules are defined in <code>rules.txt</code> using Snort syntax. Each rule specifies:</p>
+                    <ul>
+                        <li><code>action</code> - What to do when matched (alert, log, drop)</li>
+                        <li><code>protocol</code> - TCP, UDP, ICMP, or any</li>
+                        <li><code>source/destination</code> - IP addresses and ports</li>
+                        <li><code>options</code> - Content matching, flags, etc.</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <h4>YARA RULES</h4>
+                    <p>YARA rules in <code>yara_rules/</code> folder detect malware patterns. Rules use:</p>
+                    <ul>
+                        <li><strong>Strings:</strong> Hex or text patterns to find</li>
+                        <li><strong>Condition:</strong> Logic to trigger detection</li>
+                        <li><strong>Metadata:</strong> Information about the rule</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <h4>KEYBOARD SHORTCUTS</h4>
+                    <ul>
+                        <li><code>S</code> - Start packet capture</li>
+                        <li><code>X</code> - Stop packet capture</li>
+                        <li><code>ESC</code> - Close modal</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <h4>FILE OPERATIONS</h4>
+                    <ul>
+                        <li><strong>Load PCAP:</strong> Upload .pcap/.pcapng files for offline analysis</li>
+                        <li><strong>Save Capture:</strong> Export current session to .pcap file</li>
+                        <li><strong>Refresh Rules:</strong> Reload rules without restarting server</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/matrix.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+
